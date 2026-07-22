@@ -30,6 +30,9 @@ DEFAULT_CONFIG = {
         "confidence_threshold": 95,   # percent; auto-delete only above this
         "min_observations": 3,        # min confirmations before a sender/domain can auto-delete
         "poll_interval_seconds": 120,  # how often to scan the Junk folders
+        "deep_scan": True,            # fetch headers+body for auth/phishing/tracker analysis
+        "auth_as_spam": True,         # treat DMARC/SPF-failing (spoofed) mail as spam
+        "phishing_scan": True,        # analyze links for phishing
     },
 
     "quarantine_retention_days": 30,   # keep deleted messages recoverable this long

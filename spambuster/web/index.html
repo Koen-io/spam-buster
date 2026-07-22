@@ -59,6 +59,7 @@
 <nav class="tabs">
   <button class="tab active" data-tab="overview" onclick="showTab('overview')">Overview</button>
   <button class="tab" data-tab="reports" onclick="showTab('reports')">Reports</button>
+  <button class="tab" data-tab="protection" onclick="showTab('protection')">Protection</button>
   <button class="tab" data-tab="quarantine" onclick="showTab('quarantine')">Quarantine</button>
   <button class="tab" data-tab="settings" onclick="showTab('settings')">Settings</button>
 </nav>
@@ -126,6 +127,31 @@
     <div class="card">
       <div class="card-label">Recent activity</div>
       <div id="rep-events"></div>
+    </div>
+  </section>
+
+  <!-- PROTECTION -->
+  <section id="tab-protection" class="tab-panel hidden">
+    <div class="stat-row" id="prot-stats"></div>
+    <div class="grid">
+      <div class="card">
+        <div class="card-label">Phishing detected</div>
+        <div class="muted small">Links analyzed for look-alike domains, hidden destinations and credential-harvest language. Caught in Junk, before you ever click.</div>
+        <div id="prot-phishing"></div>
+      </div>
+      <div class="card">
+        <div class="card-label">Spoofing blocked (SPF / DKIM / DMARC)</div>
+        <div class="muted small">Senders that failed email authentication — impersonation attempts.</div>
+        <div id="prot-spoofing"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Newsletters & mass email</span>
+        <button class="btn tiny danger" onclick="deleteAllNewsletters()">Delete all</button>
+      </div>
+      <div class="muted small">Bulk mail with a working unsubscribe. Use one-click unsubscribe where supported, or slice them all at once. <b>Tip:</b> for real spam, deleting is safer than unsubscribing (unsubscribing confirms your address is live).</div>
+      <div id="prot-newsletters"></div>
     </div>
   </section>
 

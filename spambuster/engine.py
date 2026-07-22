@@ -12,7 +12,7 @@ import threading
 import time
 import traceback
 
-from . import auth, config, database as db, detector, graph, logutil
+from . import auth, config, database as db, detector, graph, logutil, protection
 
 log = logutil.get_logger("engine")
 
@@ -129,12 +129,21 @@ class Engine:
         min_obs = cfg["detection"].get("min_observations", 3)
         suggestions = []
 
+        deep = cfg["detection"].get("deep_scan", True)
         for m in current:
             gid = m["graph_id"]
             is_new = gid not in seen
             db.upsert_seen(acct_id, m)
 
             prob, reasons, decisive = detector.score(m)
+
+            # Deep mailbox-side analysis (auth / phishing / trackers / newsletter).
+            if deep:
+                analysis = self._protect(token, acct_id, m, is_new)
+                if analysis:
+                    prob, reasons, decisive = self._apply_protection(
+                        cfg, analysis, prob, reasons, decisive)
+
             conf = round(prob * 100)
 
             # Your blocklist always deletes, in any mode.
@@ -155,6 +164,47 @@ class Engine:
 
         db.set_meta(f"suggestions:{acct_id}", suggestions[:100])
         return info
+
+    def _protect(self, token, acct_id, m, is_new):
+        """Return analysis for a message, fetching+storing it once when new."""
+        gid = m["graph_id"]
+        if not db.has_analysis(acct_id, gid):
+            try:
+                full = graph.get_message_full(token, gid)
+            except Exception as e:  # noqa
+                log.debug("get_message_full failed: %s", e)
+                return db.get_analysis(acct_id, gid)
+            if not full:
+                return None
+            try:
+                a = protection.analyze(full)
+                db.save_analysis(acct_id, m, a)
+            except Exception as e:  # noqa
+                log.warning("protection.analyze failed: %s", e)
+                return None
+        return db.get_analysis(acct_id, gid)
+
+    def _apply_protection(self, cfg, a, prob, reasons, decisive):
+        """Fold auth/phishing verdicts into the spam decision."""
+        det = cfg["detection"]
+        extra = []
+        if det.get("auth_as_spam", True) and a.get("spoofing"):
+            prob = max(prob, 0.90)
+            extra.append("Failed sender authentication (SPF/DKIM/DMARC) — likely spoofed")
+        if det.get("phishing_scan", True) and a.get("is_phishing"):
+            score = (a.get("phishing_score") or 0) / 100.0
+            prob = max(prob, min(0.99, 0.80 + score * 0.19))
+            if (a.get("phishing_score") or 0) >= 75:
+                decisive = True
+            try:
+                import json
+                pr = json.loads(a.get("phishing_reasons") or "[]")
+            except Exception:
+                pr = []
+            extra.extend(pr[:2])
+        if extra:
+            reasons = extra + [r for r in reasons if r not in extra]
+        return prob, reasons, decisive
 
     def _auto_delete(self, token, acct_id, m, conf, reasons):
         try:
@@ -200,6 +250,65 @@ class Engine:
     def mark_not_spam(self, qid):
         """Alias kept for clarity; same as restore."""
         return self.restore(qid)
+
+    # -------------------------------------------------- newsletters
+    def _token_for(self, account_id):
+        cfg = config.load()
+        return auth.get_token(cfg.get("azure_client_id"), account_id)
+
+    def delete_newsletter(self, account_id, graph_id, reason="Newsletter — removed"):
+        token = self._token_for(account_id)
+        if not token:
+            return False, "account not signed in"
+        seen = db.get_seen(account_id, graph_id) or {"graph_id": graph_id}
+        try:
+            new_id = graph.soft_delete(token, graph_id)
+        except Exception as e:  # noqa
+            return False, str(e)
+        item = {"account_id": account_id, "graph_id": new_id or graph_id,
+                "sender": seen.get("sender"), "sender_domain": seen.get("sender_domain"),
+                "sender_name": seen.get("sender_name"), "subject": seen.get("subject"),
+                "received": seen.get("received"), "confidence": None, "reasons": [reason]}
+        db.add_quarantine(item)
+        db.delete_seen(account_id, graph_id)
+        db.add_event(account_id, kind="auto_deleted", label="spam", source="user",
+                     sender=seen.get("sender"), subject=seen.get("subject"))
+        return True, "deleted"
+
+    def bulk_delete_newsletters(self):
+        deleted = 0
+        for n in db.list_newsletters(limit=500):
+            ok, _ = self.delete_newsletter(n["account_id"], n["graph_id"])
+            if ok:
+                deleted += 1
+        return deleted
+
+    def unsubscribe(self, account_id, graph_id):
+        """RFC-8058 one-click unsubscribe (HTTP POST) when the sender supports it."""
+        a = db.get_analysis(account_id, graph_id)
+        if not a:
+            return False, "no unsubscribe data"
+        url = a.get("unsub_oneclick")
+        if url:
+            try:
+                import requests
+                r = requests.post(url, data="List-Unsubscribe=One-Click",
+                                  headers={"Content-Type": "application/x-www-form-urlencoded"},
+                                  timeout=20)
+                if r.status_code < 400:
+                    return True, "unsubscribed"
+                return False, f"server returned {r.status_code}"
+            except Exception as e:  # noqa
+                return False, str(e)
+        http = []
+        try:
+            import json
+            http = json.loads(a.get("unsub_http") or "[]")
+        except Exception:
+            pass
+        if http:
+            return True, {"open_url": http[0]}   # let the user finish in a browser
+        return False, "no one-click unsubscribe available"
 
 
 engine = Engine()

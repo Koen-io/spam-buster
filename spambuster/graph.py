@@ -74,6 +74,24 @@ def get_message(token, graph_id):
     return _normalize(r.json())
 
 
+def get_message_full(token, graph_id):
+    """Fetch headers + HTML body for deep analysis (auth, phishing, trackers)."""
+    url = (f"{BASE}/me/messages/{graph_id}"
+           f"?$select=id,internetMessageId,subject,from,receivedDateTime,isRead,"
+           f"bodyPreview,body,internetMessageHeaders")
+    r = requests.get(url, headers=_headers(token), timeout=TIMEOUT)
+    if r.status_code == 404:
+        return None
+    if r.status_code != 200:
+        raise GraphError(f"get_message_full failed: {r.status_code} {r.text[:200]}")
+    m = r.json()
+    norm = _normalize(m)
+    body = m.get("body") or {}
+    norm["html"] = body.get("content") or ""
+    norm["headers"] = m.get("internetMessageHeaders") or []
+    return norm
+
+
 def move_message(token, graph_id, destination):
     """Move a message to a well-known folder. Returns the NEW message id."""
     r = requests.post(f"{BASE}/me/messages/{graph_id}/move",

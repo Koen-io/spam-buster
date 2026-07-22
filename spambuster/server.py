@@ -197,6 +197,33 @@ def create_app():
         return jsonify({"ok": ok, "message": msg})
 
     # ---------------------------------------------------- engine controls
+    # ---------------------------------------------------- protection
+    @app.route("/api/protection")
+    def api_protection():
+        return jsonify({
+            "summary": db.protection_summary(),
+            "phishing": db.list_phishing(30),
+            "spoofing": db.recent_spoofing(30),
+            "newsletters": db.list_newsletters(200),
+        })
+
+    @app.route("/api/newsletters/delete", methods=["POST"])
+    def api_news_delete():
+        d = request.get_json(force=True) or {}
+        ok, msg = engine.delete_newsletter(d.get("account_id"), d.get("graph_id"))
+        return jsonify({"ok": ok, "message": msg})
+
+    @app.route("/api/newsletters/delete_all", methods=["POST"])
+    def api_news_delete_all():
+        n = engine.bulk_delete_newsletters()
+        return jsonify({"ok": True, "deleted": n})
+
+    @app.route("/api/unsubscribe", methods=["POST"])
+    def api_unsubscribe():
+        d = request.get_json(force=True) or {}
+        ok, msg = engine.unsubscribe(d.get("account_id"), d.get("graph_id"))
+        return jsonify({"ok": ok, "result": msg})
+
     # ---------------------------------------------------- lists
     @app.route("/api/lists")
     def api_lists():

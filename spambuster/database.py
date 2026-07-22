@@ -81,6 +81,32 @@ CREATE TABLE IF NOT EXISTS meta (
     value TEXT
 );
 
+CREATE TABLE IF NOT EXISTS analysis (
+    account_id    TEXT NOT NULL,
+    graph_id      TEXT NOT NULL,
+    sender        TEXT,
+    sender_domain TEXT,
+    subject       TEXT,
+    received      TEXT,
+    spf           TEXT,
+    dkim          TEXT,
+    dmarc         TEXT,
+    compauth      TEXT,
+    authenticated INTEGER,
+    spoofing      INTEGER,
+    phishing_score INTEGER,
+    is_phishing   INTEGER,
+    phishing_reasons TEXT,
+    trackers      INTEGER,
+    tracker_domains  TEXT,
+    is_newsletter INTEGER,
+    unsub_http    TEXT,
+    unsub_oneclick TEXT,
+    unsub_mailto  TEXT,
+    analyzed_at   REAL,
+    PRIMARY KEY (account_id, graph_id)
+);
+
 CREATE TABLE IF NOT EXISTS lists (
     kind   TEXT NOT NULL,   -- block_domain | block_sender | allow_sender (friends)
     value  TEXT NOT NULL,
@@ -309,6 +335,108 @@ def stats():
             "known_senders": scalar("SELECT COUNT(*) FROM reputation WHERE key_type='sender'"),
             "known_tokens": scalar("SELECT COUNT(*) FROM reputation WHERE key_type='token'"),
         }
+
+
+# ---------------------------------------------------------------- analysis
+
+def has_analysis(account_id, graph_id):
+    with _lock:
+        return _c().execute(
+            "SELECT 1 FROM analysis WHERE account_id=? AND graph_id=?",
+            (account_id, graph_id)).fetchone() is not None
+
+
+def save_analysis(account_id, msg, a):
+    au = a["auth"]; un = a["unsubscribe"]
+    with _lock:
+        _c().execute(
+            """INSERT INTO analysis
+               (account_id, graph_id, sender, sender_domain, subject, received,
+                spf, dkim, dmarc, compauth, authenticated, spoofing,
+                phishing_score, is_phishing, phishing_reasons,
+                trackers, tracker_domains, is_newsletter,
+                unsub_http, unsub_oneclick, unsub_mailto, analyzed_at)
+               VALUES (?,?,?,?,?,?, ?,?,?,?,?,?, ?,?,?, ?,?,?, ?,?,?,?)
+               ON CONFLICT(account_id, graph_id) DO UPDATE SET
+                 phishing_score=excluded.phishing_score,
+                 is_phishing=excluded.is_phishing,
+                 analyzed_at=excluded.analyzed_at""",
+            (account_id, msg["graph_id"], msg.get("sender"), msg.get("sender_domain"),
+             msg.get("subject"), msg.get("received"),
+             au["spf"], au["dkim"], au["dmarc"], au["compauth"],
+             1 if au["authenticated"] else 0, 1 if au["spoofing"] else 0,
+             a["phishing_score"], 1 if a["is_phishing"] else 0,
+             json.dumps(a["phishing_reasons"]),
+             a["trackers"], json.dumps(a["tracker_domains"]),
+             1 if un["is_newsletter"] else 0,
+             json.dumps(un["http"]), un["one_click"], un["mailto"],
+             time.time()),
+        )
+        _c().commit()
+
+
+def get_analysis(account_id, graph_id):
+    with _lock:
+        row = _c().execute("SELECT * FROM analysis WHERE account_id=? AND graph_id=?",
+                           (account_id, graph_id)).fetchone()
+        return dict(row) if row else None
+
+
+def protection_summary():
+    with _lock:
+        c = _c()
+        def sc(q, *a):
+            r = c.execute(q, a).fetchone(); return r[0] if r and r[0] is not None else 0
+        return {
+            "analyzed": sc("SELECT COUNT(*) FROM analysis"),
+            "authenticated": sc("SELECT COUNT(*) FROM analysis WHERE authenticated=1"),
+            "spoofing": sc("SELECT COUNT(*) FROM analysis WHERE spoofing=1"),
+            "phishing": sc("SELECT COUNT(*) FROM analysis WHERE is_phishing=1"),
+            "trackers": sc("SELECT COALESCE(SUM(trackers),0) FROM analysis"),
+            "newsletters_current": sc(
+                "SELECT COUNT(*) FROM analysis a JOIN seen_messages s "
+                "ON a.account_id=s.account_id AND a.graph_id=s.graph_id "
+                "WHERE a.is_newsletter=1"),
+        }
+
+
+def list_phishing(limit=40):
+    with _lock:
+        rows = _c().execute(
+            "SELECT * FROM analysis WHERE is_phishing=1 ORDER BY analyzed_at DESC LIMIT ?",
+            (limit,)).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            try: d["phishing_reasons"] = json.loads(d.get("phishing_reasons") or "[]")
+            except Exception: d["phishing_reasons"] = []
+            out.append(d)
+        return out
+
+
+def list_newsletters(limit=200):
+    """Newsletters currently still in a Junk folder."""
+    with _lock:
+        rows = _c().execute(
+            "SELECT a.* FROM analysis a JOIN seen_messages s "
+            "ON a.account_id=s.account_id AND a.graph_id=s.graph_id "
+            "WHERE a.is_newsletter=1 ORDER BY a.analyzed_at DESC LIMIT ?",
+            (limit,)).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            try: d["unsub_http"] = json.loads(d.get("unsub_http") or "[]")
+            except Exception: d["unsub_http"] = []
+            out.append(d)
+        return out
+
+
+def recent_spoofing(limit=40):
+    with _lock:
+        rows = _c().execute(
+            "SELECT * FROM analysis WHERE spoofing=1 ORDER BY analyzed_at DESC LIMIT ?",
+            (limit,)).fetchall()
+        return [dict(r) for r in rows]
 
 
 # ---------------------------------------------------------------- lists

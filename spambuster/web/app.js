@@ -20,6 +20,7 @@ function showTab(name) {
   $("tab-" + name).classList.remove("hidden");
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
   if (name === "reports") loadReports();
+  if (name === "protection") loadProtection();
   if (name === "quarantine") loadQuarantine();
   if (name === "settings") { fillSettings(); loadLists(); }
 }
@@ -154,6 +155,51 @@ async function loadReports() {
     : `<div class="muted">No activity yet.</div>`;
 }
 function labelFor(k) { return ({deleted_unread:"you deleted", auto_deleted:"auto-deleted", rescued:"rescued", marked_not_spam:"not spam"})[k] || k; }
+
+// ---------------- protection
+async function loadProtection() {
+  const p = await api("/api/protection"); const s = p.summary;
+  $("prot-stats").innerHTML = [
+    ["Authenticated", s.authenticated], ["Spoofing blocked", s.spoofing],
+    ["Phishing caught", s.phishing], ["Trackers seen", s.trackers], ["Newsletters", s.newsletters_current],
+  ].map(([l,n]) => `<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
+
+  $("prot-phishing").innerHTML = p.phishing.length ? p.phishing.map(x => `
+    <div class="row"><div class="main"><div>${esc(x.subject || "(no subject)")}
+      <span class="pill spam">${x.phishing_score}%</span></div>
+      <div class="sub">${esc(x.sender || "")} · ${esc((x.phishing_reasons||[])[0] || "")}</div></div></div>`).join("")
+    : `<div class="muted">No phishing detected. 🛡️</div>`;
+
+  $("prot-spoofing").innerHTML = p.spoofing.length ? p.spoofing.map(x => `
+    <div class="row"><div class="main"><div>${esc(x.subject || "(no subject)")}</div>
+      <div class="sub">${esc(x.sender || "")} · spf:${esc(x.spf)} dkim:${esc(x.dkim)} dmarc:${esc(x.dmarc)}</div></div>
+      <span class="pill warn">spoofed</span></div>`).join("")
+    : `<div class="muted">No spoofing detected.</div>`;
+
+  $("prot-newsletters").innerHTML = p.newsletters.length ? p.newsletters.map(x => `
+    <div class="row"><div class="main"><div>${esc(x.subject || "(no subject)")}</div>
+      <div class="sub">${esc(x.sender || "")}${x.trackers ? ` · ${x.trackers} tracker(s)` : ""}</div></div>
+      <div>${x.unsub_oneclick
+          ? `<button class="btn tiny" onclick="unsub('${x.account_id}','${x.graph_id}')">Unsubscribe</button>`
+          : (x.unsub_http && x.unsub_http.length
+             ? `<button class="btn tiny" onclick="unsub('${x.account_id}','${x.graph_id}')">Unsubscribe ↗</button>` : "")}
+        <button class="btn tiny danger" onclick="delNews('${x.account_id}','${x.graph_id}')">Delete</button></div></div>`).join("")
+    : `<div class="muted">No newsletters in your Junk right now.</div>`;
+}
+async function unsub(account_id, graph_id) {
+  const r = await post("/api/unsubscribe", {account_id, graph_id});
+  if (r.ok && r.result && r.result.open_url) { window.open(r.result.open_url, "_blank"); toast("Opening unsubscribe page…"); }
+  else toast(r.ok ? "Unsubscribed ✓" : ("Couldn’t unsubscribe: " + (r.result||"")));
+  loadProtection();
+}
+async function delNews(account_id, graph_id) {
+  const r = await post("/api/newsletters/delete", {account_id, graph_id});
+  toast(r.ok ? "Deleted" : "Failed"); loadProtection();
+}
+async function deleteAllNewsletters() {
+  const r = await post("/api/newsletters/delete_all");
+  toast(`Deleted ${r.deleted || 0} newsletter(s)`); loadProtection();
+}
 
 // ---------------- quarantine
 async function loadQuarantine() {
