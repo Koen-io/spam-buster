@@ -220,12 +220,43 @@ def mark_not_spam(account_id, message):
     db.add_event(account_id or "user", kind="marked_not_spam", label="ham",
                  source="user", sender=f["sender"], sender_domain=f["domain"],
                  subject=message.get("subject"))
+    # Trusting a sender should also pull its mail out of the Phishing list.
+    try:
+        db.clear_phishing_for_sender(sender=f["sender"], domain=f["domain"])
+    except Exception:
+        pass
     try:
         from . import model
         model.train(message, "ham")
         model.train(message, "ham")   # extra pass — this is a confirmed correction
     except Exception:
         pass
+
+
+def undo_rule(key_type, key):
+    """Undo an auto-delete rule: forget everything learned about this key.
+
+    key_type is 'sender' or 'domain'. The reputation row is deleted, so the
+    sender/domain returns to neutral and is no longer auto-deleted. We log a
+    small event so the change is visible in Recent activity.
+    """
+    if key_type not in ("sender", "domain") or not key:
+        return False
+    db.clear_reputation(key_type, key)
+    db.add_event("user", kind="rule_undone", label="info", source="user",
+                 sender=key if key_type == "sender" else None,
+                 sender_domain=key if key_type == "domain" else None,
+                 subject=f"Rule removed for {key}")
+    return True
+
+
+def safe_senders(limit=40):
+    """Senders you consistently keep — shown under Protection → trusted."""
+    out = []
+    for r in db.top_reputation("sender", limit=200, spammy=False):
+        if r["ham_count"] >= 2 and r["spam_count"] == 0:
+            out.append({"key": r["key"], "kept": int(r["ham_count"])})
+    return out[:limit]
 
 
 def rules_summary(min_observations=3, limit=40):

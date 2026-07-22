@@ -78,6 +78,16 @@
       </div>
     </div>
     <div class="stat-row" id="stat-row"></div>
+    <div class="grid">
+      <div class="card">
+        <div class="card-label" data-i18n="rep.thisweek">This week</div>
+        <div id="digest"></div>
+      </div>
+      <div class="card">
+        <div class="card-label" data-i18n="rep.trend">Spam caught · last 14 days</div>
+        <div id="trends"></div>
+      </div>
+    </div>
     <div class="card">
       <div class="card-label" data-i18n="ov.woulddelete">Would auto-delete (top matches)</div>
       <div id="ov-suggestions" class="muted"></div>
@@ -92,31 +102,17 @@
       <div class="muted small" data-i18n="rep.flaggeddesc">Everything currently in your Junk, rated by Spam Buster. Mark false positives “No Spam”, or delete confirmed spam.</div>
       <div id="flagged-list" style="margin-top:12px"></div>
     </div>
-    <div class="grid">
-      <div class="card">
-        <div class="card-label" data-i18n="rep.thisweek">This week</div>
-        <div id="digest"></div>
-      </div>
-      <div class="card">
-        <div class="card-label" data-i18n="rep.trend">Spam caught · last 14 days</div>
-        <div id="trends"></div>
-      </div>
-    </div>
     <div class="card">
       <div class="card-label" data-i18n="rep.rules">Rules Spam Buster follows</div>
       <div class="muted small" data-i18n="rep.rulesdesc">Learned from mail you deleted unread. It only auto-deletes when a sender or domain is a consistent, confident match — or when you’ve blocklisted it.</div>
+      <div class="muted small" data-i18n="rep.rulesundo" style="margin-top:4px">Deleted something that wasn’t really spam? Undo the rule to reset that sender or domain to neutral.</div>
       <div id="model-line" class="muted small" style="margin-top:6px;color:var(--accent)"></div>
       <div id="rep-rules" style="margin-top:8px"></div>
     </div>
-    <div class="grid">
-      <div class="card">
-        <div class="card-label" data-i18n="rep.words">Words that signal spam</div>
-        <div id="rep-words"></div>
-      </div>
-      <div class="card">
-        <div class="card-label" data-i18n="rep.safe">Senders you trust</div>
-        <div id="rep-safe"></div>
-      </div>
+    <div class="card">
+      <div class="card-label" data-i18n="rep.words">Words that signal spam</div>
+      <div class="muted small" data-i18n="rep.wordshint">Learned automatically from mail you delete — nobody types these in. To add your own trigger words, use Settings → Words to watch (a gentle signal, it never deletes on its own).</div>
+      <div id="rep-words" style="margin-top:8px"></div>
     </div>
     <div class="card">
       <div class="card-label" data-i18n="rep.activity">Recent activity</div>
@@ -146,6 +142,11 @@
       </div>
       <div class="muted small" data-i18n="prot.newsdesc">Bulk mail with a working unsubscribe. Use one-click unsubscribe where supported, or slice them all at once. Tip: for real spam, deleting is safer than unsubscribing (unsubscribing confirms your address is live).</div>
       <div id="prot-newsletters"></div>
+    </div>
+    <div class="card">
+      <div class="card-label" data-i18n="rep.safe">Senders you trust</div>
+      <div class="muted small" data-i18n="prot.safedesc">Senders you keep again and again. Their mail is protected from flagging and deletion.</div>
+      <div id="rep-safe" style="margin-top:8px"></div>
     </div>
   </section>
 

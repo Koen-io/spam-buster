@@ -245,7 +245,7 @@ def create_app():
             hint = {"type": "lower_threshold", "from": det["confidence_threshold"], "to": 90}
         return jsonify({
             "rules": detector.rules_summary(min_observations=min_obs),
-            "events": db.recent_events(60),
+            "events": db.recent_events_deduped(40),
             "suggestions": suggestions[:50],
             "stats": st,
             "hint": hint,
@@ -282,6 +282,50 @@ def create_app():
             "phishing": db.list_phishing(30),
             "spoofing": db.recent_spoofing(30),
             "newsletters": db.list_newsletters(200),
+            "safe_senders": detector.safe_senders(30),
+        })
+
+    @app.route("/api/rule/undo", methods=["POST"])
+    def api_rule_undo():
+        d = request.get_json(force=True) or {}
+        ok = detector.undo_rule(d.get("type"), (d.get("key") or "").strip().lower())
+        engine.wake()
+        return jsonify({"ok": bool(ok)})
+
+    @app.route("/api/message/full", methods=["POST"])
+    def api_message_full():
+        """Fetch the real email (headers + body) so the user can review it."""
+        from . import graph
+        d = request.get_json(force=True) or {}
+        aid = d.get("account_id"); gid = d.get("graph_id")
+        if not aid or not gid:
+            return jsonify({"ok": False, "message": "missing account or message id"}), 400
+        token = engine._token_for(aid)
+        if not token:
+            return jsonify({"ok": False, "message": "account not signed in"}), 400
+        try:
+            full = graph.get_message_full(token, gid)
+        except Exception as e:  # noqa
+            return jsonify({"ok": False, "message": str(e)}), 502
+        if not full:
+            return jsonify({"ok": False, "message": "This email is no longer in the mailbox."}), 404
+        analysis = db.get_analysis(aid, gid) or {}
+        reasons = []
+        try:
+            import json as _json
+            reasons = _json.loads(analysis.get("phishing_reasons") or "[]")
+        except Exception:
+            reasons = []
+        return jsonify({
+            "ok": True,
+            "subject": full.get("subject"),
+            "sender": full.get("sender"),
+            "sender_name": full.get("sender_name"),
+            "received": full.get("received"),
+            "html": full.get("html") or "",
+            "has_attachments": full.get("has_attachments"),
+            "attachments": full.get("attachments") or [],
+            "reasons": reasons,
         })
 
     @app.route("/api/newsletters/delete", methods=["POST"])

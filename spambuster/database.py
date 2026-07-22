@@ -277,6 +277,23 @@ def get_reputation(key_type, key):
         return dict(row) if row else None
 
 
+def clear_reputation(key_type, key):
+    """Forget a sender/domain/token entirely — resets it to neutral.
+
+    Used to *undo* an auto-delete rule the user no longer wants (e.g. a mail
+    that was deleted just because it was no longer needed, not because it was
+    spam). After this the key has no history and won't be auto-deleted.
+    """
+    if not key:
+        return
+    with _lock:
+        _c().execute(
+            "DELETE FROM reputation WHERE key_type=? AND key=?",
+            (key_type, key.lower()),
+        )
+        _c().commit()
+
+
 def top_reputation(key_type, limit=50, spammy=True):
     order = "spam_count DESC" if spammy else "ham_count DESC"
     with _lock:
@@ -433,9 +450,19 @@ def protection_summary():
 
 
 def list_phishing(limit=40):
+    """Phishing hits — excluding anything the user has since trusted.
+
+    Senders/domains on the Friends (allow) list are filtered out, so mail you
+    marked “No Spam” or added to Friends stops reappearing here.
+    """
     with _lock:
         rows = _c().execute(
-            "SELECT * FROM analysis WHERE is_phishing=1 ORDER BY analyzed_at DESC LIMIT ?",
+            "SELECT a.* FROM analysis a JOIN seen_messages s "
+            "ON a.account_id=s.account_id AND a.graph_id=s.graph_id "
+            "WHERE a.is_phishing=1 "
+            "AND lower(a.sender) NOT IN (SELECT value FROM lists WHERE kind='allow_sender') "
+            "AND lower(a.sender_domain) NOT IN (SELECT value FROM lists WHERE kind='allow_sender') "
+            "ORDER BY a.analyzed_at DESC LIMIT ?",
             (limit,)).fetchall()
         out = []
         for r in rows:
@@ -444,6 +471,25 @@ def list_phishing(limit=40):
             except Exception: d["phishing_reasons"] = []
             out.append(d)
         return out
+
+
+def clear_phishing_for_sender(sender=None, domain=None):
+    """Drop the phishing flag for a sender/domain the user has just trusted.
+
+    Belt-and-braces with the allow-list filter in list_phishing: this also
+    stops the message from counting toward the phishing summary total.
+    """
+    sender = (sender or "").strip().lower()
+    domain = (domain or "").strip().lower()
+    if not sender and not domain:
+        return 0
+    with _lock:
+        cur = _c().execute(
+            "UPDATE analysis SET is_phishing=0 WHERE "
+            "(?<>'' AND lower(sender)=?) OR (?<>'' AND lower(sender_domain)=?)",
+            (sender, sender, domain, domain))
+        _c().commit()
+        return cur.rowcount
 
 
 def list_newsletters(limit=200):
@@ -556,6 +602,40 @@ def recent_events(limit=100):
             "SELECT * FROM events ORDER BY ts DESC LIMIT ?", (limit,)
         ).fetchall()
         return [dict(r) for r in rows]
+
+
+def recent_events_deduped(limit=40):
+    """Recent activity, one row per email.
+
+    The same message can produce several event rows (e.g. you deleted it, then
+    later marked it “No Spam”). That double-listing confused the Reports view,
+    so here we collapse every email to its NEWEST status and flag whether it was
+    later corrected — so you see one clean line per message.
+    """
+    rows = recent_events(400)   # already newest-first
+    spammy = {"deleted_unread", "auto_deleted", "marked_spam"}
+    hammy = {"marked_not_spam", "rescued"}
+    groups = {}
+    order = []
+    for e in rows:
+        key = ((e.get("sender") or "").lower(), (e.get("subject") or "").lower())
+        g = groups.get(key)
+        if g is None:
+            g = dict(e)             # newest event wins (rows are DESC by ts)
+            g["corrected"] = False
+            g["_kinds"] = set()
+            groups[key] = g
+            order.append(key)
+        g["_kinds"].add(e.get("kind"))
+    out = []
+    for key in order:
+        g = groups[key]
+        g["corrected"] = bool(g["_kinds"] & spammy) and bool(g["_kinds"] & hammy)
+        g.pop("_kinds", None)
+        out.append(g)
+        if len(out) >= limit:
+            break
+    return out
 
 
 def events_for_training():

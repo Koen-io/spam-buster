@@ -94,6 +94,9 @@ function render() {
       <span class="pill ${a.connected ? "ham":"warn"}">${a.connected ? t("st.connected"):t("st.notconnected")}</span></div>`).join("")
     : `<div class="muted">—</div>`;
 
+  // This-week + 14-day trend now live on the Overview (first thing you see).
+  loadDigest(); loadTrends();
+
   const lc = s.updates.last_checked ? new Date(s.updates.last_checked).toLocaleString() : t("st.never");
   if ($("update-line")) $("update-line").textContent = t("set.lastcheck", lc);
 }
@@ -185,18 +188,22 @@ async function loadReports() {
     ? t("model.active", m.examples) : t("model.warming", m.examples||0, m.min||15);
   $("rep-rules").innerHTML = rules.auto_rules.length ? rules.auto_rules.map(x => `
     <div class="row"><div class="main"><div>${esc(x.text)}</div><div class="sub">${esc(x.evidence)}</div></div>
-      <span class="pill spam">auto-delete</span></div>`).join("")
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+        <span class="pill spam">auto-delete</span>
+        <button class="btn tiny" data-type="${esc(x.type||'')}" data-key="${esc(x.key||'')}" onclick="trustRule(this)" title="${t('rule.trusttip')}">${t("com.friend")}</button>
+        <button class="btn tiny ghost" data-type="${esc(x.type||'')}" data-key="${esc(x.key||'')}" onclick="undoRule(this)">${t("rule.undo")}</button>
+      </div></div>`).join("")
     : `<div class="muted">No firm rules yet. Keep deleting spam unread and rules will appear here.</div>`;
   $("rep-words").innerHTML = rules.spammy_words.length ? rules.spammy_words.slice(0,20).map(w =>
     `<span class="pill spam" style="margin:3px;display:inline-block">${esc(w.word)} ${Math.round(w.ratio*100)}%</span>`).join("")
     : `<div class="muted">Nothing yet.</div>`;
-  $("rep-safe").innerHTML = rules.safe_senders.length ? rules.safe_senders.slice(0,15).map(sa =>
-    `<div class="row"><div class="main">${esc(sa.key)}</div><span class="pill ham">kept ${sa.kept}×</span></div>`).join("")
-    : `<div class="muted">Rescue a message or add a Friend and it appears here.</div>`;
   $("rep-events").innerHTML = r.events.length ? r.events.slice(0,40).map(e => `
     <div class="row"><div class="main"><div>${esc(e.subject || "(no subject)")}</div>
       <div class="sub">${esc(e.sender || "")} · ${ago(e.ts)}</div></div>
-      <span class="pill ${e.label === "spam" ? "spam":"ham"}">${labelFor(e.kind)}</span></div>`).join("")
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+        ${e.corrected ? `<span class="pill" title="${t('act.correctedtip')}">${t('act.corrected')}</span>` : ""}
+        <span class="pill ${e.label === "spam" ? "spam" : (e.label === "ham" ? "ham" : "warn")}">${labelFor(e.kind)}</span>
+      </div></div>`).join("")
     : `<div class="muted">No activity yet.</div>`;
   const h = r.hint, hb = $("reports-hint");
   if (hb) {
@@ -208,7 +215,68 @@ async function loadReports() {
       hb.innerHTML = `<div>💡 ${esc(msg)}</div>${btn}`; hb.classList.remove("hidden");
     } else hb.classList.add("hidden");
   }
-  loadDigest(); loadTrends(); loadFlagged();
+  loadFlagged();
+}
+
+// ---- undo / trust an auto-delete rule
+async function undoRule(btn) {
+  await post("/api/rule/undo", {type: btn.dataset.type, key: btn.dataset.key});
+  toast(t("toast.ruleundone"));
+  const row = btn.closest(".row"); if (row) row.style.display = "none";
+  refresh();
+}
+async function trustRule(btn) {
+  const key = btn.dataset.key || "";
+  if (key) await post("/api/lists/add", {kind: "allow_sender", value: key});
+  await post("/api/rule/undo", {type: btn.dataset.type, key});
+  toast(t("toast.friend"));
+  const row = btn.closest(".row"); if (row) row.style.display = "none";
+  refresh();
+}
+
+// ---- review the real email in a popup, with action buttons
+async function viewEmail(accountId, graphId, sender, domain, subject) {
+  openModal(`<div class="upd-center"><div class="spinner"></div>
+      <div class="muted">${t("mail.loading")}</div></div>`);
+  const r = await post("/api/message/full", {account_id: accountId, graph_id: graphId});
+  if (!r.ok) { toast(r.message || t("mail.fail")); closeModal(); return; }
+  const reasons = (r.reasons || []).map(esc).join(" · ");
+  const att = (r.attachments || []).length
+    ? `<div class="muted small" style="margin-top:4px">📎 ${(r.attachments||[]).map(a => esc(a.name)).join(", ")}</div>` : "";
+  const when = r.received ? new Date(r.received).toLocaleString() : "";
+  openModal(`
+    <div class="mail-head">
+      <div class="mail-subj">${esc(r.subject || "(no subject)")}</div>
+      <div class="muted small">${esc(r.sender_name || "")} &lt;${esc(r.sender || sender || "")}&gt;${when ? ` · ${esc(when)}` : ""}</div>
+      ${reasons ? `<div class="mail-warn">⚠ ${reasons}</div>` : ""}
+      ${att}
+    </div>
+    <iframe id="mail-frame" class="mail-frame" sandbox referrerpolicy="no-referrer"></iframe>
+    <div class="modal-actions mail-actions">
+      <button class="btn ghost" data-sender="${esc(sender||'')}" data-domain="${esc(domain||'')}" data-subject="${esc(subject||'')}" data-account="${esc(accountId||'')}" onclick="modalNotSpam(this)">${t("com.notspam")}</button>
+      <button class="btn" data-sender="${esc(sender||'')}" data-domain="${esc(domain||'')}" data-subject="${esc(subject||'')}" data-account="${esc(accountId||'')}" onclick="modalFriend(this)">${t("com.friend")}</button>
+      <button class="btn danger" data-account-id="${esc(accountId||'')}" data-graph-id="${esc(graphId||'')}" onclick="modalDelete(this)">${t("com.delete")}</button>
+    </div>`);
+  const f = $("mail-frame");
+  if (f) f.srcdoc = r.html || `<p style="font-family:-apple-system,sans-serif;color:#888;padding:12px">${t("mail.empty")}</p>`;
+}
+function reloadCurrentList() {
+  if (CURRENT_TAB === "reports") loadReports();
+  else if (CURRENT_TAB === "protection") loadProtection();
+}
+async function modalNotSpam(b) {
+  await post("/api/notspam", {sender: b.dataset.sender, subject: b.dataset.subject,
+    sender_domain: b.dataset.domain, account_id: b.dataset.account});
+  toast(t("toast.notspam")); closeModal(); reloadCurrentList(); refresh();
+}
+async function modalFriend(b) {
+  await post("/api/friend/add", {sender: b.dataset.sender, sender_domain: b.dataset.domain,
+    subject: b.dataset.subject, account_id: b.dataset.account});
+  toast(t("toast.friend")); closeModal(); reloadCurrentList(); refresh();
+}
+async function modalDelete(b) {
+  await post("/api/message/delete", {account_id: b.dataset.accountId, graph_id: b.dataset.graphId});
+  toast(t("com.delete")); closeModal(); reloadCurrentList(); refresh();
 }
 async function loadFlagged() {
   const el = $("flagged-list"); if (!el) return;
@@ -219,6 +287,7 @@ async function loadFlagged() {
       <div>${esc(x.subject || "(no subject)")} <span class="pill ${x.confidence>=thr?'spam':'warn'}">${x.confidence}%</span></div>
       <div class="sub" style="white-space:normal;max-width:none">${esc(x.sender || "")}${x.account?` · ${esc(x.account)}`:""}${(x.reasons||[]).length?` · ${esc((x.reasons||[])[0])}`:""}</div></div>
     <div style="display:flex;gap:6px;flex-shrink:0">
+      <button class="btn tiny ghost" onclick="viewEmail('${esc(x.account_id||'')}','${esc(x.graph_id||'')}','${esc(x.sender||'')}','${esc(x.sender_domain||'')}','${esc((x.subject||'').replace(/'/g,'’'))}')">${t("com.view")}</button>
       <button class="btn tiny ghost" data-sender="${esc(x.sender||'')}" data-domain="${esc(x.sender_domain||'')}" data-subject="${esc(x.subject||'')}" data-account="${esc(x.account_id||'')}" onclick="notSpam(this)">${t("com.notspam")}</button>
       <button class="btn tiny" data-sender="${esc(x.sender||'')}" data-domain="${esc(x.sender_domain||'')}" data-subject="${esc(x.subject||'')}" data-account="${esc(x.account_id||'')}" onclick="addFriend(this)">${t("com.friend")}</button>
       <button class="btn tiny danger" data-account-id="${esc(x.account_id||'')}" data-graph-id="${esc(x.graph_id||'')}" onclick="flagDelete(this)">${t("com.delete")}</button>
@@ -286,7 +355,7 @@ function maybeWizard() {
       </div>`);
   }
 }
-function labelFor(k) { return ({deleted_unread:t("act.deleted"), auto_deleted:t("act.autodeleted"), rescued:t("act.rescued"), marked_not_spam:t("act.notspam")})[k] || k; }
+function labelFor(k) { return ({deleted_unread:t("act.deleted"), auto_deleted:t("act.autodeleted"), rescued:t("act.rescued"), marked_not_spam:t("act.notspam"), rule_undone:t("act.ruleundone")})[k] || k; }
 
 // ---------------- protection
 async function loadProtection() {
@@ -297,12 +366,23 @@ async function loadProtection() {
   ].map(([l,n]) => `<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
 
   const nsBtn = (x) => `<button class="btn tiny ghost" data-sender="${esc(x.sender||'')}" data-domain="${esc(x.sender_domain||'')}" data-subject="${esc(x.subject||'')}" data-account="${esc(x.account_id||'')}" onclick="notSpam(this)">${t("com.notspam")}</button>`;
+  const actBtns = (x) => `<div style="display:flex;gap:6px;flex-shrink:0">
+      <button class="btn tiny ghost" onclick="viewEmail('${esc(x.account_id||'')}','${esc(x.graph_id||'')}','${esc(x.sender||'')}','${esc(x.sender_domain||'')}','${esc((x.subject||'').replace(/'/g,'’'))}')">${t("com.view")}</button>
+      ${nsBtn(x)}
+      <button class="btn tiny" data-sender="${esc(x.sender||'')}" data-domain="${esc(x.sender_domain||'')}" data-subject="${esc(x.subject||'')}" data-account="${esc(x.account_id||'')}" onclick="addFriend(this)">${t("com.friend")}</button>
+      <button class="btn tiny danger" data-account-id="${esc(x.account_id||'')}" data-graph-id="${esc(x.graph_id||'')}" onclick="flagDelete(this)">${t("com.delete")}</button>
+    </div>`;
   $("prot-phishing").innerHTML = p.phishing.length ? p.phishing.map(x => `
     <div class="row"><div class="main"><div>${esc(x.subject || "(no subject)")}
       <span class="pill spam">${x.phishing_score}%</span></div>
-      <div class="sub">${esc(x.sender || "")} · ${esc((x.phishing_reasons||[])[0] || "")}</div></div>
-      ${nsBtn(x)}</div>`).join("")
+      <div class="sub" style="white-space:normal;max-width:none">${esc(x.sender || "")} · ${esc((x.phishing_reasons||[])[0] || "")}</div></div>
+      ${actBtns(x)}</div>`).join("")
     : `<div class="muted">${t("prot.none.phish")}</div>`;
+
+  const safe = p.safe_senders || [];
+  if ($("rep-safe")) $("rep-safe").innerHTML = safe.length ? safe.slice(0,20).map(sa =>
+    `<div class="row"><div class="main">${esc(sa.key)}</div><span class="pill ham">${t("prot.kept", sa.kept)}</span></div>`).join("")
+    : `<div class="muted">${t("prot.none.safe")}</div>`;
 
   $("prot-spoofing").innerHTML = p.spoofing.length ? p.spoofing.map(x => `
     <div class="row"><div class="main"><div>${esc(x.subject || "(no subject)")}</div>
