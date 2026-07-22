@@ -52,12 +52,13 @@ def check_for_updates():
         return {**result, "last_checked": checked}
 
     try:
-        _git("remote", "set-url", "origin", repo)
-        fetch = _git("fetch", "origin", channel)
+        # Fetch straight from the configured URL — never rewrite 'origin',
+        # so local development (git push via SSH) keeps working.
+        fetch = _git("fetch", repo, channel)
         if fetch.returncode != 0:
             raise RuntimeError(fetch.stderr.strip() or "git fetch failed")
         local = _git("rev-parse", "HEAD").stdout.strip()
-        remote = _git("rev-parse", f"origin/{channel}").stdout.strip()
+        remote = _git("rev-parse", "FETCH_HEAD").stdout.strip()
         available = bool(local and remote and local != remote)
         message = "Update available." if available else "You’re up to date."
         result = {"status": "ok", "available": available,
@@ -81,8 +82,10 @@ def apply_update():
         return {"status": "error", "message": "Not a git checkout — cannot update."}
     try:
         before_req = _read(os.path.join(paths.APP_ROOT, "requirements.txt"))
-        _git("fetch", "origin", channel)
-        reset = _git("reset", "--hard", f"origin/{channel}")
+        cfg2 = config.load()
+        repo = cfg2["updates"].get("repo", "")
+        _git("fetch", repo, channel)
+        reset = _git("reset", "--hard", "FETCH_HEAD")
         if reset.returncode != 0:
             raise RuntimeError(reset.stderr.strip() or "git reset failed")
         after_req = _read(os.path.join(paths.APP_ROOT, "requirements.txt"))
