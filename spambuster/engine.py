@@ -137,15 +137,19 @@ class Engine:
             prob, reasons, decisive = detector.score(m)
             conf = round(prob * 100)
 
+            # Your blocklist always deletes, in any mode.
+            blocked = (db.list_has("block_sender", m["sender"])
+                       or db.list_has("block_domain", m["sender_domain"]))
+
             would_delete = (conf >= threshold and decisive)
-            if would_delete:
+            if would_delete and not blocked:
                 suggestions.append({
                     "graph_id": gid, "sender": m["sender"],
                     "subject": m["subject"], "confidence": conf,
                     "reasons": reasons,
                 })
 
-            if mode == "auto" and would_delete and is_new:
+            if is_new and (blocked or (mode == "auto" and would_delete)):
                 if self._auto_delete(token, acct_id, m, conf, reasons):
                     info["auto_deleted"] += 1
 

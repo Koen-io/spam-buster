@@ -60,9 +60,19 @@ def check_for_updates():
         local = _git("rev-parse", "HEAD").stdout.strip()
         remote = _git("rev-parse", "FETCH_HEAD").stdout.strip()
         available = bool(local and remote and local != remote)
+        notes = []
+        new_version = current_version()
+        if available:
+            log_out = _git("log", "--pretty=%s", "HEAD..FETCH_HEAD").stdout.strip()
+            notes = [ln for ln in log_out.splitlines() if ln][:12]
+            # Try to read the target VERSION from the fetched tree.
+            v = _git("show", "FETCH_HEAD:VERSION").stdout.strip()
+            if v:
+                new_version = v
         message = "Update available." if available else "You’re up to date."
         result = {"status": "ok", "available": available,
-                  "current": current_version(),
+                  "current": current_version(), "new_version": new_version,
+                  "notes": notes,
                   "local": local[:8], "remote": remote[:8], "message": message}
     except Exception as e:  # noqa
         log.warning("update check failed: %s", e)

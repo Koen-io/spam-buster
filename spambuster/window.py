@@ -1,18 +1,38 @@
-"""Helper process: show the dashboard in a chrome-less native window.
+"""Dashboard window: a chrome-less native macOS window (WKWebView via pywebview).
 
-Run as:  python -m spambuster.window http://127.0.0.1:7676
-Kept separate from the menu-bar process so their UI run-loops don't clash.
+Launched through the app bundle executable in "window" mode, so macOS shows it
+as "Spam Buster" with the real icon. Falls back to the browser if pywebview or
+its native deps are unavailable.
 """
 
+import os
 import sys
 
 
-def main():
-    url = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:7676"
+def _become_regular_app():
+    """Show a real Dock icon for the window even though the agent is LSUIElement."""
+    try:
+        from AppKit import (NSApplication, NSApplicationActivationPolicyRegular,
+                            NSImage)
+        app = NSApplication.sharedApplication()
+        app.setActivationPolicy_(NSApplicationActivationPolicyRegular)
+        from . import paths
+        icon_path = os.path.join(paths.ASSETS_DIR, "AppIcon-512.png")
+        if os.path.exists(icon_path):
+            img = NSImage.alloc().initWithContentsOfFile_(icon_path)
+            if img:
+                app.setApplicationIconImage_(img)
+    except Exception:
+        pass
+
+
+def main(url=None):
+    url = url or "http://127.0.0.1:7676"
     try:
         import webview
-        webview.create_window("Spam Buster", url, width=1120, height=780,
-                              min_size=(900, 640))
+        _become_regular_app()
+        webview.create_window("Spam Buster", url, width=1160, height=820,
+                              min_size=(940, 660))
         webview.start()
     except Exception:
         import webbrowser
@@ -20,4 +40,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1] if len(sys.argv) > 1 else None)

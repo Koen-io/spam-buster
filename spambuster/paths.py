@@ -17,6 +17,7 @@ LOG_PATH = os.path.join(LOG_DIR, "spambuster.log")
 # Where the running code lives (the repo checkout). Used by the updater.
 APP_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
+ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 
 
 def ensure_dirs():

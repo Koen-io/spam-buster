@@ -197,6 +197,34 @@ def create_app():
         return jsonify({"ok": ok, "message": msg})
 
     # ---------------------------------------------------- engine controls
+    # ---------------------------------------------------- lists
+    @app.route("/api/lists")
+    def api_lists():
+        return jsonify({
+            "block_domain": db.list_all("block_domain"),
+            "block_sender": db.list_all("block_sender"),
+            "allow_sender": db.list_all("allow_sender"),
+        })
+
+    @app.route("/api/lists/add", methods=["POST"])
+    def api_lists_add():
+        data = request.get_json(force=True) or {}
+        kind = data.get("kind")
+        value = (data.get("value") or "").strip().lower().lstrip("@")
+        if kind not in ("block_domain", "block_sender", "allow_sender"):
+            return jsonify({"ok": False, "error": "bad list type"}), 400
+        if not value:
+            return jsonify({"ok": False, "error": "Enter a value."}), 400
+        db.list_add(kind, value, note=data.get("note"))
+        engine.wake()
+        return jsonify({"ok": True})
+
+    @app.route("/api/lists/remove", methods=["POST"])
+    def api_lists_remove():
+        data = request.get_json(force=True) or {}
+        db.list_remove(data.get("kind"), data.get("value"))
+        return jsonify({"ok": True})
+
     @app.route("/api/scan", methods=["POST"])
     def api_scan():
         engine.wake()

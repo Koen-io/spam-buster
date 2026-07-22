@@ -80,6 +80,14 @@ CREATE TABLE IF NOT EXISTS meta (
     key TEXT PRIMARY KEY,
     value TEXT
 );
+
+CREATE TABLE IF NOT EXISTS lists (
+    kind   TEXT NOT NULL,   -- block_domain | block_sender | allow_sender (friends)
+    value  TEXT NOT NULL,
+    note   TEXT,
+    added  REAL,
+    PRIMARY KEY (kind, value)
+);
 """
 
 
@@ -301,6 +309,48 @@ def stats():
             "known_senders": scalar("SELECT COUNT(*) FROM reputation WHERE key_type='sender'"),
             "known_tokens": scalar("SELECT COUNT(*) FROM reputation WHERE key_type='token'"),
         }
+
+
+# ---------------------------------------------------------------- lists
+
+def list_add(kind, value, note=None):
+    value = (value or "").strip().lower()
+    if not value:
+        return False
+    with _lock:
+        _c().execute(
+            "INSERT INTO lists(kind, value, note, added) VALUES(?,?,?,?) "
+            "ON CONFLICT(kind, value) DO UPDATE SET note=excluded.note",
+            (kind, value, note, time.time()),
+        )
+        _c().commit()
+    return True
+
+
+def list_remove(kind, value):
+    with _lock:
+        _c().execute("DELETE FROM lists WHERE kind=? AND value=?",
+                     (kind, (value or "").strip().lower()))
+        _c().commit()
+
+
+def list_all(kind):
+    with _lock:
+        rows = _c().execute(
+            "SELECT * FROM lists WHERE kind=? ORDER BY added DESC", (kind,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def list_has(kind, value):
+    if not value:
+        return False
+    with _lock:
+        row = _c().execute(
+            "SELECT 1 FROM lists WHERE kind=? AND value=?",
+            (kind, value.strip().lower()),
+        ).fetchone()
+        return row is not None
 
 
 def recent_events(limit=100):

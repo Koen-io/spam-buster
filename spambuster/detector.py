@@ -65,6 +65,17 @@ def score(message):
     (used together with min_observations to gate auto-deletion).
     """
     f = features(message)
+
+    # ---- hard overrides: your block / allow lists win over everything ----
+    if f["sender"] and db.list_has("allow_sender", f["sender"]):
+        return 0.0, [f"{f['sender']} is on your Friends list — always kept"], False
+    if f["domain"] and db.list_has("allow_sender", f["domain"]):
+        return 0.0, [f"Domain {f['domain']} is on your Friends list — always kept"], False
+    if f["sender"] and db.list_has("block_sender", f["sender"]):
+        return 1.0, [f"{f['sender']} is on your Blocklist — always deleted"], True
+    if f["domain"] and db.list_has("block_domain", f["domain"]):
+        return 1.0, [f"Domain {f['domain']} is on your Blocklist — always deleted"], True
+
     log_odds = 0.0
     reasons = []
     decisive = False

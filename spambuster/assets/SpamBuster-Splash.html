@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spam Buster — Splash</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#050708}
+  body{display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace}
+  .splash{position:relative;width:760px;height:500px;max-width:100vw;background:radial-gradient(120% 85% at 50% 40%,#101a1c 0%,#0a1012 48%,#050708 100%);overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer}
+  .grid{position:absolute;inset:0;background-image:linear-gradient(rgba(45,212,191,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(45,212,191,.045) 1px,transparent 1px);background-size:30px 30px;-webkit-mask-image:radial-gradient(66% 60% at 50% 42%,#000,transparent);mask-image:radial-gradient(66% 60% at 50% 42%,#000,transparent)}
+  .vig{position:absolute;inset:0;box-shadow:inset 0 0 160px 40px rgba(0,0,0,.7)}
+  .radar{position:absolute;top:120px;width:290px;height:290px;display:flex;align-items:center;justify-content:center}
+  .ring{position:absolute;border:1px solid rgba(45,212,191,.13);border-radius:50%}
+  .sweep{position:absolute;width:290px;height:290px;border-radius:50%;background:conic-gradient(from 0deg,rgba(45,212,191,.55),rgba(45,212,191,.12) 30%,transparent 55%);-webkit-mask-image:radial-gradient(circle,transparent 20%,#000 21%);mask-image:radial-gradient(circle,transparent 20%,#000 21%);animation:sweep 3.4s linear infinite}
+  .blip{position:absolute;border-radius:50%;background:#2dd4bf;box-shadow:0 0 8px #2dd4bf;animation:blink 1.6s ease-in-out infinite}
+  .pulse{position:absolute;width:80px;height:80px;border-radius:50%;background:rgba(45,212,191,.5);animation:pulse 2.6s 1.5s ease-out infinite}
+  .shield{position:relative;width:150px;height:180px;margin-bottom:34px;z-index:3;animation:float 5s ease-in-out infinite}
+  .shieldGlow{position:absolute;inset:-20px;background:radial-gradient(circle,rgba(45,212,191,.4),transparent 62%);filter:blur(4px);animation:glow 3.2s ease-in-out infinite}
+  .name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:36px;letter-spacing:-.015em;color:#f2fffb;opacity:0;animation:up .6s 1.5s ease-out forwards;z-index:3}
+  .tag{font-size:12px;letter-spacing:.1em;color:#5fbfae;margin-top:11px;opacity:0;animation:up .6s 1.75s ease-out forwards;z-index:3}
+  .loader{position:absolute;bottom:44px;width:280px;opacity:0;animation:fade .5s 2.1s ease-out forwards;z-index:3}
+  .track{position:relative;height:5px;border-radius:5px;background:rgba(255,255,255,.07);overflow:hidden}
+  .fill{height:100%;border-radius:5px;background:linear-gradient(90deg,#0f766e,#2dd4bf);transform-origin:left;animation:bar 1.8s 2.15s cubic-bezier(.5,0,.1,1) forwards}
+  .shim{position:absolute;top:0;left:0;width:40%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:shim 1.6s 2.3s linear infinite}
+  .tele{display:flex;justify-content:space-between;margin-top:11px;font-size:9.5px;letter-spacing:.14em;color:#456c64}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  @keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes sweep{to{transform:rotate(360deg)}}
+  @keyframes pulse{0%{transform:scale(.85);opacity:.55}100%{transform:scale(2.4);opacity:0}}
+  @keyframes glow{0%,100%{opacity:.4}50%{opacity:.85}}
+  @keyframes bar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  @keyframes shim{0%{transform:translateX(-120%)}100%{transform:translateX(320%)}}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+  @keyframes tick{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+</style>
+</head>
+<body>
+<div class="splash" id="splash" title="Click to replay">
+  <div class="grid"></div><div class="vig"></div>
+  <div class="radar">
+    <div class="ring" style="width:290px;height:290px;border-color:rgba(45,212,191,.1)"></div>
+    <div class="ring" style="width:210px;height:210px"></div>
+    <div class="ring" style="width:130px;height:130px;border-color:rgba(45,212,191,.16)"></div>
+    <div style="position:absolute;width:290px;height:1px;background:rgba(45,212,191,.08)"></div>
+    <div style="position:absolute;width:1px;height:290px;background:rgba(45,212,191,.08)"></div>
+    <div class="sweep"></div>
+    <div class="blip" style="left:64%;top:34%;width:6px;height:6px;animation-delay:.4s"></div>
+    <div class="blip" style="left:30%;top:62%;width:5px;height:5px;animation-delay:1s"></div>
+    <div class="pulse"></div>
+  </div>
+  <div class="shield">
+    <div class="shieldGlow"></div>
+    <svg viewBox="0 0 100 120" width="150" height="180" fill="none" style="position:relative">
+      <defs>
+        <linearGradient id="f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0f2320"/><stop offset="1" stop-color="#070f0e"/></linearGradient>
+        <linearGradient id="e" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5ff0dc"/><stop offset="1" stop-color="#12a594"/></linearGradient>
+      </defs>
+      <path d="M50 5 L92 21 L92 60 C92 93 71 113 50 119 C29 113 8 93 8 60 L8 21 Z" fill="url(#f)"/>
+      <path d="M50 5 L92 21 L92 60 C92 93 71 113 50 119 C29 113 8 93 8 60 L8 21 Z" stroke="url(#e)" stroke-width="2.6" stroke-linejoin="round" style="stroke-dasharray:420;stroke-dashoffset:420;animation:draw 1.2s .15s cubic-bezier(.4,0,.2,1) forwards;filter:drop-shadow(0 0 9px rgba(45,212,191,.7))"/>
+      <path d="M50 8 L88 22 L88 40 C70 32 34 32 12 40 L12 22 Z" fill="rgba(255,255,255,.05)"/>
+      <g style="opacity:0;animation:fade .6s 1.05s ease-out forwards">
+        <rect x="30" y="50" width="40" height="28" rx="4.5" stroke="#bff6ec" stroke-width="2.4"/>
+        <path d="M31 53 L50 67 L69 53" stroke="#bff6ec" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <circle cx="67" cy="45" r="5.5" fill="#2dd4bf" style="opacity:0;animation:tick .4s 1.5s cubic-bezier(.2,.9,.3,1.4) forwards;filter:drop-shadow(0 0 5px #2dd4bf)"/>
+      <path d="M64.4 45 L66.4 47 L69.6 43" stroke="#04110f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="opacity:0;animation:fade .3s 1.65s ease-out forwards"/>
+    </svg>
+  </div>
+  <div class="name">Spam Buster</div>
+  <div class="tag">The frontline defense against digital noise</div>
+  <div class="loader">
+    <div class="track"><div class="fill"></div><div class="shim"></div></div>
+    <div class="tele"><span>SWEEPING 4 MAILBOXES</span><span>0 THREATS LEFT</span></div>
+  </div>
+</div>
+<script>
+  document.getElementById('splash').addEventListener('click', function(){
+    const c = this.cloneNode(true);
+    this.parentNode.replaceChild(c, this);
+    c.addEventListener('click', arguments.callee);
+  });
+</script>
+</body>
+</html>

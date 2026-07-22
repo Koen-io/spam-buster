@@ -7,9 +7,32 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+
+<!-- Splash -->
+<div id="splash-overlay">
+  <div class="sp-wrap">
+    <div class="sp-radar">
+      <div class="sp-ring" style="width:240px;height:240px"></div>
+      <div class="sp-ring" style="width:168px;height:168px"></div>
+      <div class="sp-ring" style="width:96px;height:96px"></div>
+      <div class="sp-sweep"></div>
+    </div>
+    <svg class="sp-shield" viewBox="0 0 100 120" fill="none">
+      <path d="M50 6 L88 22 V58 C88 86 72 104 50 114 C28 104 12 86 12 58 V22 Z"
+            stroke="#2dd4bf" stroke-width="3.5" fill="rgba(45,212,191,0.06)"/>
+      <rect x="32" y="48" width="36" height="26" rx="4" stroke="#5ff0dc" stroke-width="3" fill="none"/>
+      <path d="M33 50 L50 63 L67 50" stroke="#5ff0dc" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <circle cx="70" cy="44" r="9" fill="#2dd4bf"/>
+      <path d="M66 44 l3 3 l5 -6" stroke="#04110f" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="sp-name">Spam Buster</div>
+    <div class="sp-tag">THE FRONTLINE DEFENSE AGAINST DIGITAL NOISE</div>
+    <div class="sp-bar"><div class="sp-fill"></div></div>
+  </div>
+</div>
+
 <div id="toast" class="toast"></div>
 
-<!-- Connect-account modal -->
 <div id="modal" class="modal-backdrop hidden">
   <div class="modal">
     <button class="modal-close" onclick="closeModal()">&times;</button>
@@ -19,7 +42,7 @@
 
 <header class="topbar">
   <div class="brand" onclick="showTab('settings')" title="Open Settings" role="button">
-    <div class="logo">🛡️<span class="logo-gear">⚙︎</span></div>
+    <div class="logo"><img src="assets/AppIcon-128.png" alt="Spam Buster"><span class="logo-gear">⚙︎</span></div>
     <div>
       <div class="brand-name">Spam Buster</div>
       <div class="brand-sub">v<span id="version">–</span> · <span id="mode-badge" class="badge">…</span></div>
@@ -28,6 +51,7 @@
   <div class="top-actions">
     <button id="pause-btn" class="btn ghost" onclick="togglePause()">Pause</button>
     <button class="btn ghost" onclick="scanNow()">Scan now</button>
+    <button class="btn" onclick="openUpdateFlow()"><span class="ic">⟳</span> Update</button>
     <button class="btn ghost" onclick="showTab('settings')" title="Settings">⚙︎ Settings</button>
   </div>
 </header>
@@ -40,11 +64,10 @@
 </nav>
 
 <main>
-  <!-- Onboarding banner -->
   <div id="onboard" class="banner hidden">
     <div>
-      <strong>Welcome! Let’s get Spam Buster protecting your inbox.</strong>
-      <div class="muted">Add your Microsoft app ID and connect your two accounts in Settings.</div>
+      <strong>Welcome to Spam Buster.</strong>
+      <div class="muted">Connect your mail accounts in Settings to start guarding your inbox.</div>
     </div>
     <button class="btn primary" onclick="showTab('settings')">Open setup →</button>
   </div>
@@ -61,6 +84,7 @@
           <div id="status-dot" class="dot"></div>
         </div>
         <div id="status-detail" class="muted">Starting…</div>
+        <div class="mode-title">Select operation mode</div>
         <div class="mode-quick">
           <button class="chip" data-mode="observe" onclick="setMode('observe')">Observe</button>
           <button class="chip" data-mode="suggest" onclick="setMode('suggest')">Suggest</button>
@@ -68,28 +92,17 @@
         </div>
       </div>
 
-      <div class="card update-card">
-        <div class="card-label">Software updates</div>
-        <button id="big-update" class="btn update-big" onclick="checkOrApplyUpdate()">
-          <span class="update-icon">⟳</span>
-          <span id="update-text">Check for updates</span>
-        </button>
-        <div class="muted update-meta">Last checked: <span id="last-checked">never</span></div>
-        <div id="update-result" class="muted"></div>
+      <div class="card">
+        <div class="card-label">Accounts</div>
+        <div id="ov-accounts"></div>
       </div>
     </div>
 
     <div class="stat-row" id="stat-row"></div>
 
-    <div class="grid">
-      <div class="card">
-        <div class="card-label">Accounts</div>
-        <div id="ov-accounts"></div>
-      </div>
-      <div class="card">
-        <div class="card-label">Would auto-delete (top matches)</div>
-        <div id="ov-suggestions" class="muted">Learning…</div>
-      </div>
+    <div class="card">
+      <div class="card-label">Would auto-delete (top matches)</div>
+      <div id="ov-suggestions" class="muted">Learning…</div>
     </div>
   </section>
 
@@ -97,7 +110,7 @@
   <section id="tab-reports" class="tab-panel hidden">
     <div class="card">
       <div class="card-label">Rules Spam Buster follows</div>
-      <div class="muted small">Learned from mail you deleted unread. It only auto-deletes when a sender/domain is a consistent, confident match.</div>
+      <div class="muted small">Learned from mail you deleted unread. It only auto-deletes when a sender or domain is a consistent, confident match — or when you’ve blocklisted it.</div>
       <div id="rep-rules"></div>
     </div>
     <div class="grid">
@@ -132,16 +145,7 @@
   <!-- SETTINGS -->
   <section id="tab-settings" class="tab-panel hidden">
     <div class="card">
-      <div class="card-label">1 · Microsoft connection</div>
-      <div class="muted small">Paste the Application (client) ID from your free Azure app registration. <a href="#" onclick="showAzureHelp();return false;">How do I get this?</a></div>
-      <div class="field-row">
-        <input id="client-id" class="input" placeholder="00000000-0000-0000-0000-000000000000">
-        <button class="btn primary" onclick="saveClientId()">Save</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-label">2 · Email accounts</div>
+      <div class="card-label">Email accounts</div>
       <div id="set-accounts"></div>
       <div class="field-row">
         <input id="new-account" class="input" placeholder="name@hotmail.com">
@@ -150,7 +154,7 @@
     </div>
 
     <div class="card">
-      <div class="card-label">3 · Detection</div>
+      <div class="card-label">Detection</div>
       <div class="setting">
         <label>Mode</label>
         <select id="set-mode" class="input" onchange="saveDetection()">
@@ -179,25 +183,34 @@
     </div>
 
     <div class="card">
-      <div class="card-label">4 · Automatic updates</div>
-      <button id="big-update-2" class="btn update-big" onclick="checkOrApplyUpdate()">
-        <span class="update-icon">⟳</span><span id="update-text-2">Check for updates</span>
-      </button>
-      <div class="muted update-meta">Last checked: <span id="last-checked-2">never</span></div>
-      <div class="setting" style="margin-top:14px">
-        <label>Update source (GitHub repo)</label>
-        <input id="set-repo" class="input" placeholder="https://github.com/you/spam-buster.git">
+      <div class="card-label">Blocklist — always deleted</div>
+      <div class="muted small">Banish a sender or an entire domain. Anything matching is removed immediately, in any mode.</div>
+      <div id="block-domains" class="taglist"></div>
+      <div class="field-row">
+        <input id="new-block-domain" class="input" placeholder="domain, e.g. deals-spam.ru">
+        <button class="btn danger" onclick="addList('block_domain','new-block-domain')">Block domain</button>
       </div>
-      <div class="setting">
-        <label>Branch</label>
-        <input id="set-channel" class="input" placeholder="main" style="max-width:200px">
+      <div id="block-senders" class="taglist"></div>
+      <div class="field-row">
+        <input id="new-block-sender" class="input" placeholder="sender, e.g. promo@spam.com">
+        <button class="btn danger" onclick="addList('block_sender','new-block-sender')">Block sender</button>
       </div>
-      <button class="btn" onclick="saveUpdates()">Save update settings</button>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Friends — always kept</div>
+      <div class="muted small">Trusted senders or domains. Their mail is never flagged or deleted, no matter what.</div>
+      <div id="allow-senders" class="taglist"></div>
+      <div class="field-row">
+        <input id="new-allow" class="input" placeholder="friend@example.com or example.com">
+        <button class="btn primary" onclick="addList('allow_sender','new-allow')">Add to Friends</button>
+      </div>
     </div>
 
     <div class="card">
       <div class="card-label">Diagnostics</div>
       <button class="btn ghost" onclick="loadLogs()">View log</button>
+      <span class="muted small" id="update-line" style="margin-left:12px"></span>
       <pre id="logs" class="logs hidden"></pre>
     </div>
   </section>
