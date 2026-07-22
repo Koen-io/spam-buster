@@ -457,12 +457,10 @@ def list_phishing(limit=40):
     """
     with _lock:
         rows = _c().execute(
-            "SELECT a.* FROM analysis a JOIN seen_messages s "
-            "ON a.account_id=s.account_id AND a.graph_id=s.graph_id "
-            "WHERE a.is_phishing=1 "
-            "AND lower(a.sender) NOT IN (SELECT value FROM lists WHERE kind='allow_sender') "
-            "AND lower(a.sender_domain) NOT IN (SELECT value FROM lists WHERE kind='allow_sender') "
-            "ORDER BY a.analyzed_at DESC LIMIT ?",
+            "SELECT * FROM analysis WHERE is_phishing=1 "
+            "AND lower(sender) NOT IN (SELECT value FROM lists WHERE kind='allow_sender') "
+            "AND lower(sender_domain) NOT IN (SELECT value FROM lists WHERE kind='allow_sender') "
+            "ORDER BY analyzed_at DESC LIMIT ?",
             (limit,)).fetchall()
         out = []
         for r in rows:
@@ -471,6 +469,45 @@ def list_phishing(limit=40):
             except Exception: d["phishing_reasons"] = []
             out.append(d)
         return out
+
+
+def clear_analysis_flags(account_id, graph_id):
+    """Drop phishing/newsletter flags for one message (e.g. after you delete it),
+    so a handled email doesn't keep reappearing in the Protection lists."""
+    with _lock:
+        _c().execute(
+            "UPDATE analysis SET is_phishing=0, is_newsletter=0 "
+            "WHERE account_id=? AND graph_id=?", (account_id, graph_id))
+        _c().commit()
+
+
+def find_message_by_key(key_type, key, limit=8):
+    """Best-effort: candidate (account_id, graph_id, subject, reasons) for a
+    sender/domain, newest first — live Junk copies first, then analyzed history.
+    Used to open the actual email behind a learned rule."""
+    col = "sender" if key_type == "sender" else "sender_domain"
+    key = (key or "").strip().lower()
+    if not key:
+        return []
+    out = []
+    with _lock:
+        for r in _c().execute(
+                f"SELECT account_id, graph_id, subject FROM seen_messages "
+                f"WHERE lower({col})=? ORDER BY last_seen DESC LIMIT ?",
+                (key, limit)).fetchall():
+            out.append({"account_id": r["account_id"], "graph_id": r["graph_id"],
+                        "subject": r["subject"], "reasons": [], "live": True})
+        for r in _c().execute(
+                f"SELECT account_id, graph_id, subject, phishing_reasons FROM analysis "
+                f"WHERE lower({col})=? ORDER BY analyzed_at DESC LIMIT ?",
+                (key, limit)).fetchall():
+            try:
+                reasons = json.loads(r["phishing_reasons"] or "[]")
+            except Exception:
+                reasons = []
+            out.append({"account_id": r["account_id"], "graph_id": r["graph_id"],
+                        "subject": r["subject"], "reasons": reasons, "live": False})
+    return out
 
 
 def clear_phishing_for_sender(sender=None, domain=None):

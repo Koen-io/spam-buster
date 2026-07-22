@@ -292,6 +292,42 @@ def create_app():
         engine.wake()
         return jsonify({"ok": bool(ok)})
 
+    @app.route("/api/rule/open", methods=["POST"])
+    def api_rule_open():
+        """Open the actual email behind a learned rule.
+
+        Tries the newest live/known message from that sender or domain. If none
+        can still be fetched (the mail was deleted), returns what we remember so
+        the UI can still show a tidy card instead of a dead button.
+        """
+        from . import graph
+        d = request.get_json(force=True) or {}
+        key_type = d.get("type"); key = (d.get("key") or "").strip().lower()
+        cands = db.find_message_by_key(key_type, key, limit=8)
+        newest_subject = cands[0]["subject"] if cands else None
+        newest_reasons = next((c["reasons"] for c in cands if c["reasons"]), [])
+        for cprev in cands:
+            token = engine._token_for(cprev["account_id"])
+            if not token:
+                continue
+            try:
+                full = graph.get_message_full(token, cprev["graph_id"])
+            except Exception:
+                full = None
+            if full:
+                return jsonify({
+                    "ok": True, "found": True,
+                    "account_id": cprev["account_id"], "graph_id": cprev["graph_id"],
+                    "subject": full.get("subject"), "sender": full.get("sender"),
+                    "sender_name": full.get("sender_name"), "received": full.get("received"),
+                    "html": full.get("html") or "", "reasons": cprev["reasons"],
+                    "attachments": full.get("attachments") or [],
+                })
+        return jsonify({
+            "ok": True, "found": False, "type": key_type, "key": key,
+            "subject": newest_subject, "reasons": newest_reasons,
+        })
+
     @app.route("/api/message/full", methods=["POST"])
     def api_message_full():
         """Fetch the real email (headers + body) so the user can review it."""

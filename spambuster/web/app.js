@@ -190,6 +190,7 @@ async function loadReports() {
     <div class="row"><div class="main"><div>${esc(x.text)}</div><div class="sub">${esc(x.evidence)}</div></div>
       <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
         <span class="pill spam">auto-delete</span>
+        <button class="btn tiny ghost" onclick="openRuleEmail('${esc(x.type||'')}','${esc(x.key||'')}')">${t("com.openmail")}</button>
         <button class="btn tiny" data-type="${esc(x.type||'')}" data-key="${esc(x.key||'')}" onclick="trustRule(this)" title="${t('rule.trusttip')}">${t("com.friend")}</button>
         <button class="btn tiny ghost" data-type="${esc(x.type||'')}" data-key="${esc(x.key||'')}" onclick="undoRule(this)">${t("rule.undo")}</button>
       </div></div>`).join("")
@@ -234,31 +235,77 @@ async function trustRule(btn) {
   refresh();
 }
 
-// ---- review the real email in a popup, with action buttons
-async function viewEmail(accountId, graphId, sender, domain, subject) {
-  openModal(`<div class="upd-center"><div class="spinner"></div>
-      <div class="muted">${t("mail.loading")}</div></div>`);
-  const r = await post("/api/message/full", {account_id: accountId, graph_id: graphId});
-  if (!r.ok) { toast(r.message || t("mail.fail")); closeModal(); return; }
+// ---- review the real email in a neat popup (always opens; has a Back button)
+function mailBackBar() {
+  return `<div class="mail-topbar"><button class="btn ghost mail-back" onclick="closeModal()">← ${t("com.back")}</button></div>`;
+}
+function actionBtns(ctx, opts) {
+  const del = (opts && opts.canDelete)
+    ? `<button class="btn danger" data-account-id="${esc(ctx.accountId||'')}" data-graph-id="${esc(ctx.graphId||'')}" onclick="modalDelete(this)">${t("com.delete")}</button>` : "";
+  return `<button class="btn ghost" data-sender="${esc(ctx.sender||'')}" data-domain="${esc(ctx.domain||'')}" data-subject="${esc(ctx.subject||'')}" data-account="${esc(ctx.accountId||'')}" onclick="modalNotSpam(this)">${t("com.notspam")}</button>
+    <button class="btn" data-sender="${esc(ctx.sender||'')}" data-domain="${esc(ctx.domain||'')}" data-subject="${esc(ctx.subject||'')}" data-account="${esc(ctx.accountId||'')}" onclick="modalFriend(this)">${t("com.friend")}</button>${del}`;
+}
+function renderMailBody(r, ctx) {
   const reasons = (r.reasons || []).map(esc).join(" · ");
   const att = (r.attachments || []).length
-    ? `<div class="muted small" style="margin-top:4px">📎 ${(r.attachments||[]).map(a => esc(a.name)).join(", ")}</div>` : "";
+    ? `<div class="muted small" style="margin-top:4px">📎 ${(r.attachments||[]).map(a => esc(a.name||a)).join(", ")}</div>` : "";
   const when = r.received ? new Date(r.received).toLocaleString() : "";
-  openModal(`
+  openModal(`${mailBackBar()}
     <div class="mail-head">
-      <div class="mail-subj">${esc(r.subject || "(no subject)")}</div>
-      <div class="muted small">${esc(r.sender_name || "")} &lt;${esc(r.sender || sender || "")}&gt;${when ? ` · ${esc(when)}` : ""}</div>
+      <div class="mail-subj">${esc(r.subject || ctx.subject || "(no subject)")}</div>
+      <div class="muted small">${esc(r.sender_name || "")} &lt;${esc(r.sender || ctx.sender || "")}&gt;${when ? ` · ${esc(when)}` : ""}</div>
       ${reasons ? `<div class="mail-warn">⚠ ${reasons}</div>` : ""}
       ${att}
     </div>
     <iframe id="mail-frame" class="mail-frame" sandbox referrerpolicy="no-referrer"></iframe>
-    <div class="modal-actions mail-actions">
-      <button class="btn ghost" data-sender="${esc(sender||'')}" data-domain="${esc(domain||'')}" data-subject="${esc(subject||'')}" data-account="${esc(accountId||'')}" onclick="modalNotSpam(this)">${t("com.notspam")}</button>
-      <button class="btn" data-sender="${esc(sender||'')}" data-domain="${esc(domain||'')}" data-subject="${esc(subject||'')}" data-account="${esc(accountId||'')}" onclick="modalFriend(this)">${t("com.friend")}</button>
-      <button class="btn danger" data-account-id="${esc(accountId||'')}" data-graph-id="${esc(graphId||'')}" onclick="modalDelete(this)">${t("com.delete")}</button>
-    </div>`);
+    <div class="modal-actions mail-actions">${actionBtns(ctx, {canDelete: true})}</div>`);
   const f = $("mail-frame");
   if (f) f.srcdoc = r.html || `<p style="font-family:-apple-system,sans-serif;color:#888;padding:12px">${t("mail.empty")}</p>`;
+}
+function renderMailGone(info, ctx, ruleCtx) {
+  const reasons = (info.reasons || []).map(esc).join(" · ");
+  const acts = ruleCtx
+    ? `<button class="btn ghost" onclick="modalTrustRule('${esc(ruleCtx.type)}','${esc(ruleCtx.key)}')">${t("com.friend")}</button>
+       <button class="btn" onclick="modalUndoRule('${esc(ruleCtx.type)}','${esc(ruleCtx.key)}')">${t("rule.undo")}</button>`
+    : (ctx.sender ? actionBtns(ctx, {canDelete: false}) : "");
+  openModal(`${mailBackBar()}
+    <div class="mail-head">
+      <div class="mail-subj">${esc(info.subject || ctx.subject || "(no subject)")}</div>
+      <div class="muted small">${esc(ctx.sender || (ruleCtx ? ruleCtx.key : "") || "")}</div>
+    </div>
+    <div class="mail-gone">
+      <div class="mail-gone-ic">📭</div>
+      <div><strong>${t("mail.goneTitle")}</strong><div class="muted small">${t("mail.goneBody")}</div></div>
+    </div>
+    ${reasons ? `<div class="mail-warn">⚠ ${reasons}</div>` : ""}
+    <div class="modal-actions mail-actions">${acts}</div>`);
+}
+async function viewEmail(accountId, graphId, sender, domain, subject) {
+  openModal(`<div class="upd-center"><div class="spinner"></div><div class="muted">${t("mail.loading")}</div></div>`);
+  const ctx = {accountId, graphId, sender, domain, subject};
+  const r = await post("/api/message/full", {account_id: accountId, graph_id: graphId});
+  if (r.ok) renderMailBody(r, ctx);
+  else renderMailGone({subject, reasons: []}, ctx, null);
+}
+async function openRuleEmail(type, key) {
+  openModal(`<div class="upd-center"><div class="spinner"></div><div class="muted">${t("mail.loading")}</div></div>`);
+  const r = await post("/api/rule/open", {type, key});
+  if (r.found) {
+    renderMailBody(r, {accountId: r.account_id, graphId: r.graph_id, sender: r.sender,
+      domain: (type === "domain" ? key : ""), subject: r.subject});
+  } else {
+    renderMailGone({subject: r.subject, reasons: r.reasons || []},
+      {sender: key, domain: (type === "domain" ? key : ""), subject: r.subject}, {type, key});
+  }
+}
+async function modalUndoRule(type, key) {
+  await post("/api/rule/undo", {type, key});
+  toast(t("toast.ruleundone")); closeModal(); reloadCurrentList(); refresh();
+}
+async function modalTrustRule(type, key) {
+  if (key) await post("/api/lists/add", {kind: "allow_sender", value: key});
+  await post("/api/rule/undo", {type, key});
+  toast(t("toast.friend")); closeModal(); reloadCurrentList(); refresh();
 }
 function reloadCurrentList() {
   if (CURRENT_TAB === "reports") loadReports();
@@ -384,16 +431,17 @@ async function loadProtection() {
     `<div class="row"><div class="main">${esc(sa.key)}</div><span class="pill ham">${t("prot.kept", sa.kept)}</span></div>`).join("")
     : `<div class="muted">${t("prot.none.safe")}</div>`;
 
+  const viewBtn = (x) => `<button class="btn tiny ghost" onclick="viewEmail('${esc(x.account_id||'')}','${esc(x.graph_id||'')}','${esc(x.sender||'')}','${esc(x.sender_domain||'')}','${esc((x.subject||'').replace(/'/g,'’'))}')">${t("com.view")}</button>`;
   $("prot-spoofing").innerHTML = p.spoofing.length ? p.spoofing.map(x => `
     <div class="row"><div class="main"><div>${esc(x.subject || "(no subject)")}</div>
       <div class="sub">${esc(x.sender || "")} · spf:${esc(x.spf)} dkim:${esc(x.dkim)} dmarc:${esc(x.dmarc)}</div></div>
-      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0"><span class="pill warn">${t("com.spoofed")}</span>${nsBtn(x)}</div></div>`).join("")
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0"><span class="pill warn">${t("com.spoofed")}</span>${viewBtn(x)}${nsBtn(x)}</div></div>`).join("")
     : `<div class="muted">${t("prot.none.spoof")}</div>`;
 
   $("prot-newsletters").innerHTML = p.newsletters.length ? p.newsletters.map(x => `
     <div class="row"><div class="main"><div>${esc(x.subject || "(no subject)")}</div>
       <div class="sub">${esc(x.sender || "")}${x.trackers ? ` · ${x.trackers} tracker(s)` : ""}</div></div>
-      <div>${x.unsub_oneclick
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">${viewBtn(x)}${x.unsub_oneclick
           ? `<button class="btn tiny" onclick="unsub('${x.account_id}','${x.graph_id}')">${t("com.unsubscribe")}</button>`
           : (x.unsub_http && x.unsub_http.length
              ? `<button class="btn tiny" onclick="unsub('${x.account_id}','${x.graph_id}')">${t("com.unsubscribe")} ↗</button>` : "")}
@@ -423,6 +471,7 @@ async function loadQuarantine() {
       <div>${esc(it.subject || "(no subject)")} <span class="conf">${it.confidence ?? ""}%</span></div>
       <div class="sub" style="white-space:normal;max-width:none">${esc(it.sender || "")}${(it.reasons||[]).length ? " · " + (it.reasons||[]).map(esc).join(" · ") : ""}</div></div>
     <div style="display:flex;gap:6px;flex-shrink:0">
+      <button class="btn tiny ghost" onclick="viewEmail('${esc(it.account_id||'')}','${esc(it.graph_id||'')}','${esc(it.sender||'')}','${esc(it.sender_domain||'')}','${esc((it.subject||'').replace(/'/g,'’'))}')">${t("com.view")}</button>
       <button class="btn tiny" onclick="restore(${it.id})">${t("q.undo")}</button>
       <button class="btn tiny ghost" onclick="keepSender(${it.id})">${t("q.keep")}</button></div></div>`).join("")
     : `<div class="muted">${t("q.nothing")}</div>`;

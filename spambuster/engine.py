@@ -411,6 +411,7 @@ class Engine:
                 "received": seen.get("received"), "confidence": None, "reasons": [reason]}
         db.add_quarantine(item)
         db.delete_seen(account_id, graph_id)
+        db.clear_analysis_flags(account_id, graph_id)   # handled — drop from Protection lists
         db.add_event(account_id, kind="auto_deleted", label="spam", source="user",
                      sender=seen.get("sender"), subject=seen.get("subject"))
         return True, "deleted"

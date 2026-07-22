@@ -265,7 +265,12 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
   border-radius: 8px; padding: 7px 10px; }
 .mail-frame { width: 100%; height: min(48vh, 440px); border: 1px solid var(--border-soft);
   border-radius: 10px; background: #fff; }
-.mail-actions { justify-content: flex-end; margin-top: 16px; }
+.mail-actions { justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
+.mail-topbar { margin: -6px 0 10px; }
+.mail-back { font-weight: 600; }
+.mail-gone { display: flex; gap: 14px; align-items: center; background: var(--card2);
+  border: 1px solid var(--border-soft); border-radius: 12px; padding: 16px 18px; margin: 4px 0 2px; }
+.mail-gone-ic { font-size: 30px; line-height: 1; }
 @media (max-width: 780px) { .mail-actions { flex-wrap: wrap; } }
 
 /* ---------- splash overlay (Daylight) ---------- */
