@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spam Buster</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Space Grotesk',sans-serif}
+  body{display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(180deg,#ffffff 0%,#f4f7fb 100%)}
+  .wrap{position:relative;display:flex;flex-direction:column;align-items:center}
+  .halo{position:absolute;top:-30px;width:230px;height:230px;border-radius:50%;
+    background:radial-gradient(circle,rgba(59,130,246,.12),transparent 70%);animation:glow 3.6s ease-in-out infinite}
+  .icon{width:150px;height:150px;border-radius:34px;margin-bottom:34px;position:relative;overflow:hidden;
+    background:linear-gradient(160deg,#5ea0ff 0%,#2f74e6 52%,#1b56c4 100%);
+    box-shadow:0 22px 40px -12px rgba(30,90,200,.5),inset 0 1px 0 rgba(255,255,255,.5);
+    display:grid;place-items:center;animation:pop .8s .1s cubic-bezier(.2,.9,.3,1.2) both}
+  .gloss{position:absolute;top:-44px;left:-18px;width:190px;height:140px;background:rgba(255,255,255,.28);border-radius:50%;filter:blur(3px)}
+  .icon svg{position:relative;filter:drop-shadow(0 4px 6px rgba(10,40,90,.35))}
+  .name{font-weight:600;font-size:38px;letter-spacing:-.02em;color:#141b26;opacity:0;animation:up .6s .85s ease-out forwards}
+  .tag{font-size:15px;color:#6b7a8d;margin-top:10px;opacity:0;animation:up .6s 1.1s ease-out forwards}
+  .track{position:absolute;bottom:-70px;width:240px;height:5px;border-radius:5px;background:#e6ebf2;overflow:hidden;
+    opacity:0;animation:fade .5s 1.4s ease-out forwards}
+  .fill{height:100%;border-radius:5px;background:linear-gradient(90deg,#5ea0ff,#2f74e6);
+    transform-origin:left;transform:scaleX(0);animation:bar 1.9s 1.5s cubic-bezier(.5,0,.1,1) forwards}
+  @keyframes pop{0%{opacity:0;transform:scale(.6)}70%{transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}
+  @keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  @keyframes bar{to{transform:scaleX(1)}}
+  @keyframes glow{0%,100%{opacity:.5}50%{opacity:1}}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="halo"></div>
+    <div class="icon">
+      <div class="gloss"></div>
+      <svg viewBox="0 0 100 120" width="74" height="89" fill="none">
+        <path d="M50 6 L90 21 L90 59 C90 90 70 109 50 115 C30 109 10 90 10 59 L10 21 Z" fill="#ffffff"/>
+        <rect x="31" y="50" width="38" height="26" rx="4" fill="none" stroke="#2f74e6" stroke-width="3.4"/>
+        <path d="M33 53 L50 65 L67 53" stroke="#2f74e6" stroke-width="3.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="name">Spam Buster</div>
+    <div class="tag">The frontline defense against digital noise</div>
+    <div class="track"><div class="fill"></div></div>
+  </div>
+</body>
+</html>

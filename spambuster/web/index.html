@@ -8,24 +8,6 @@
 </head>
 <body>
 
-<!-- Splash -->
-<div id="splash-overlay">
-  <div class="sp-wrap">
-    <div class="sp-halo"></div>
-    <div class="sp-icon">
-      <div class="sp-gloss"></div>
-      <svg viewBox="0 0 100 120" width="66" height="79" fill="none">
-        <path d="M50 6 L90 21 L90 59 C90 90 70 109 50 115 C30 109 10 90 10 59 L10 21 Z" fill="#ffffff"/>
-        <rect x="31" y="50" width="38" height="26" rx="4" fill="none" stroke="#2f74e6" stroke-width="3.4"/>
-        <path d="M33 53 L50 65 L67 53" stroke="#2f74e6" stroke-width="3.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </div>
-    <div class="sp-name">Spam Buster</div>
-    <div class="sp-tag">The frontline defense against digital noise</div>
-    <div class="sp-bar"><div class="sp-fill"></div></div>
-  </div>
-</div>
-
 <div id="toast" class="toast"></div>
 
 <div id="modal" class="modal-backdrop hidden">
@@ -35,6 +17,7 @@
   </div>
 </div>
 
+<div class="appbar">
 <header class="topbar">
   <div class="brand" onclick="showTab('settings')" title="Open Settings" role="button">
     <div class="logo"><img src="assets/AppIcon-128.png" alt="Spam Buster"><span class="logo-gear">⚙︎</span></div>
@@ -58,8 +41,10 @@
   <button class="tab" data-tab="quarantine" onclick="showTab('quarantine')">Quarantine</button>
   <button class="tab" data-tab="settings" onclick="showTab('settings')">Settings</button>
 </nav>
+</div>
 
 <main>
+  <div id="warn-banner" class="banner warn-banner hidden"></div>
   <div id="onboard" class="banner hidden">
     <div>
       <strong>Welcome to Spam Buster.</strong>
@@ -155,7 +140,7 @@
     <div class="card">
       <div class="card-label">Quarantined (auto-deleted, recoverable)</div>
       <div class="muted small">These were moved to Deleted Items. Restore puts them back in your Inbox and teaches Spam Buster it was “not spam”.</div>
-      <div id="q-active"></div>
+      <div id="q-active" style="margin-top:14px"></div>
     </div>
     <div class="card">
       <div class="card-label">Restored</div>
@@ -178,11 +163,12 @@
       <div class="card-label">Detection</div>
       <div class="setting">
         <label>Mode</label>
-        <select id="set-mode" class="input" onchange="saveDetection()">
-          <option value="observe">Observe — learn only, delete nothing</option>
-          <option value="suggest">Suggest — list spam, don’t delete</option>
-          <option value="auto">Auto-delete high-confidence spam</option>
-        </select>
+        <div class="mode-quick">
+          <button class="chip" data-mode="observe" onclick="setMode('observe')">Observe</button>
+          <button class="chip" data-mode="suggest" onclick="setMode('suggest')">Suggest</button>
+          <button class="chip" data-mode="auto" onclick="setMode('auto')">Auto-delete</button>
+        </div>
+        <div class="muted small" style="margin-top:8px">Observe learns only · Suggest lists spam · Auto-delete removes high-confidence spam.</div>
       </div>
       <div class="setting">
         <label>Confidence threshold: <b id="thr-val">95</b>%</label>

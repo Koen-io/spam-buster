@@ -1,25 +1,49 @@
-"""Dashboard window: a chrome-less native macOS window (WKWebView via pywebview).
+"""Dashboard window.
 
-Launched through the app bundle executable in "window" mode, so macOS shows it
-as "Spam Buster" with the real icon. Falls back to the browser if pywebview or
-its native deps are unavailable.
+Shows a frameless splash (no title bar / traffic lights) first, then reveals
+the real dashboard window with the normal macOS chrome. The window opens at the
+full usable height of the screen. Falls back to the browser if pywebview is
+unavailable.
 """
 
 import os
 import sys
+import threading
+import time
+
+APP_NAME = "Spam Buster"
+WIDTH = 1180
 
 
-def _become_regular_app():
-    """Show a real Dock icon for the window even though the agent is LSUIElement."""
+def _set_process_name():
+    """Make the macOS menu-bar app name read 'Spam Buster', not 'Python'."""
     try:
-        from AppKit import (NSApplication, NSApplicationActivationPolicyRegular,
-                            NSImage)
+        from Foundation import NSProcessInfo
+        NSProcessInfo.processInfo().setProcessName_(APP_NAME)
+    except Exception:
+        pass
+
+
+def _screen_size():
+    try:
+        from AppKit import NSScreen
+        vf = NSScreen.mainScreen().visibleFrame()
+        return int(vf.size.width), int(vf.size.height)
+    except Exception:
+        return 1440, 860
+
+
+def _promote_and_name():
+    """Regular Dock app + real icon + correct name (runs after GUI init)."""
+    _set_process_name()
+    try:
+        from AppKit import (NSApplication, NSApplicationActivationPolicyRegular, NSImage)
         app = NSApplication.sharedApplication()
         app.setActivationPolicy_(NSApplicationActivationPolicyRegular)
         from . import paths
-        icon_path = os.path.join(paths.ASSETS_DIR, "AppIcon-512.png")
-        if os.path.exists(icon_path):
-            img = NSImage.alloc().initWithContentsOfFile_(icon_path)
+        icon = os.path.join(paths.ASSETS_DIR, "AppIcon-512.png")
+        if os.path.exists(icon):
+            img = NSImage.alloc().initWithContentsOfFile_(icon)
             if img:
                 app.setApplicationIconImage_(img)
         app.activateIgnoringOtherApps_(True)
@@ -29,15 +53,39 @@ def _become_regular_app():
 
 def main(url=None):
     url = url or "http://127.0.0.1:7676"
+    _set_process_name()
     try:
         import webview
-        _become_regular_app()
-        webview.create_window("Spam Buster", url, width=1160, height=820,
-                              min_size=(940, 660))
-        webview.start()
     except Exception:
         import webbrowser
         webbrowser.open(url)
+        return
+
+    sw, sh = _screen_size()
+    x = max(0, (sw - WIDTH) // 2)
+
+    splash = webview.create_window(
+        APP_NAME, url + "/splash", frameless=True, on_top=True,
+        width=760, height=500, x=max(0, (sw - 760) // 2), y=max(0, (sh - 500) // 2),
+        background_color="#F4F7FB")
+    main_win = webview.create_window(
+        APP_NAME, url, width=WIDTH, height=sh, x=x, y=0,
+        min_size=(960, 640), hidden=True, background_color="#EEF1F6")
+
+    def _sequence():
+        _promote_and_name()
+        time.sleep(2.5)
+        try:
+            main_win.show()
+        except Exception:
+            pass
+        time.sleep(0.15)
+        try:
+            splash.destroy()
+        except Exception:
+            pass
+
+    webview.start(_sequence)
 
 
 if __name__ == "__main__":

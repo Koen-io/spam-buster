@@ -9,6 +9,7 @@ import os
 import subprocess
 import sys
 import threading
+import time
 import webbrowser
 
 from . import config, logutil, paths, __version__
@@ -65,6 +66,24 @@ def _hide_dock_icon():
         NSApplication.sharedApplication().setActivationPolicy_(1)
     except Exception:
         pass
+    try:
+        from Foundation import NSProcessInfo
+        NSProcessInfo.processInfo().setProcessName_("Spam Buster")
+    except Exception:
+        pass
+
+
+def _startup_update_check():
+    """On launch: check for updates silently. If one exists, open the dashboard
+    so the animated 'What's new' popup shows. If up to date, do nothing."""
+    try:
+        time.sleep(6)  # let the server come up
+        from . import updater
+        res = updater.check_for_updates()
+        if res.get("available"):
+            open_dashboard("#update")
+    except Exception as e:  # noqa
+        log.debug("startup update check skipped: %s", e)
 
 
 def run_menubar():
@@ -72,6 +91,7 @@ def run_menubar():
 
     url = start_background()
     log.info("Spam Buster %s starting (menu bar). Dashboard: %s", __version__, url)
+    threading.Thread(target=_startup_update_check, daemon=True).start()
 
     class SpamBusterApp(rumps.App):
         def __init__(self):

@@ -45,9 +45,23 @@ function render() {
   document.querySelectorAll(".chip").forEach(c => c.classList.toggle("active", c.dataset.mode === mode));
   $("pause-btn").textContent = paused ? "Resume" : "Pause";
 
-  // banner: only while nothing is connected yet
-  const needsSetup = s.accounts.length === 0 || connected === 0;
-  $("onboard").classList.toggle("hidden", !needsSetup);
+  // onboarding banner: only when nothing is set up yet
+  $("onboard").classList.toggle("hidden", s.accounts.length !== 0);
+
+  // connection-lost / scan-error warning
+  const problems = [];
+  s.accounts.forEach(a => {
+    const info = acctInfo[a.id] || {};
+    if (!a.connected) problems.push(`${a.email} — sign-in expired or disconnected`);
+    else if (info.error) problems.push(`${a.email} — ${info.error}`);
+  });
+  const wb = $("warn-banner");
+  if (s.accounts.length && problems.length) {
+    wb.innerHTML = `<div><div class="wtitle">⚠️ Can’t scan ${problems.length} mailbox${problems.length>1?"es":""}</div>
+        <div class="wsub">${problems.map(esc).join(" · ")}. Reconnect the account to resume protection.</div></div>
+      <button class="btn" onclick="showTab('settings')">Fix in Settings →</button>`;
+    wb.classList.remove("hidden");
+  } else { wb.classList.add("hidden"); }
 
   const st = s.stats;
   $("stat-row").innerHTML = [
@@ -223,7 +237,6 @@ async function restore(id) {
 // ---------------- settings
 function fillSettings() {
   const s = STATE;
-  $("set-mode").value = s.detection.mode;
   $("set-threshold").value = s.detection.confidence_threshold; $("thr-val").textContent = s.detection.confidence_threshold;
   $("set-obs").value = s.detection.min_observations; $("obs-val").textContent = s.detection.min_observations;
   $("set-poll").value = s.detection.poll_interval_seconds; $("poll-val").textContent = s.detection.poll_interval_seconds;
@@ -249,7 +262,7 @@ async function removeAccount(id) { await post("/api/account/remove", {id}); awai
 async function signout(id) { await post("/api/account/signout", {id}); await refresh(); renderSettingsAccounts(); }
 async function saveDetection() {
   await post("/api/settings", {detection: {
-    mode: $("set-mode").value, confidence_threshold: parseInt($("set-threshold").value),
+    mode: STATE.detection.mode, confidence_threshold: parseInt($("set-threshold").value),
     min_observations: parseInt($("set-obs").value), poll_interval_seconds: parseInt($("set-poll").value)}});
   toast("Detection settings saved"); refresh();
 }
@@ -297,13 +310,10 @@ function openModal(html) { $("modal-body").innerHTML = html; $("modal").classLis
 function closeModal() { $("modal").classList.add("hidden"); clearInterval(connectPoll); }
 
 // ---------------- boot
-function boot() {
-  // splash
-  setTimeout(() => { const o = $("splash-overlay"); if (o) o.classList.add("gone");
-    setTimeout(() => o && o.remove(), 700); }, 2200);
-  // deep-link to settings (menu-bar "Settings…")
+async function boot() {
+  await refresh();
   if (location.hash === "#settings") showTab("settings");
-  refresh();
+  if (location.hash === "#update") setTimeout(openUpdateFlow, 400);
   setInterval(() => { if (CURRENT_TAB === "overview") refresh(); }, 8000);
 }
 boot();

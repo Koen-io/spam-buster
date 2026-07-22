@@ -48,6 +48,10 @@ def create_app():
     def index():
         return send_from_directory(paths.WEB_DIR, "index.html")
 
+    @app.route("/splash")
+    def splash():
+        return send_from_directory(paths.WEB_DIR, "splash.html")
+
     @app.route("/<path:fname>")
     def static_files(fname):
         if os.path.exists(os.path.join(paths.WEB_DIR, fname)):
