@@ -16,10 +16,25 @@ WIDTH = 1180
 
 
 def _set_process_name():
-    """Make the macOS menu-bar app name read 'Spam Buster', not 'Python'."""
+    """Make the macOS menu-bar app name read 'Spam Buster', not 'Python'.
+
+    The bold application menu is drawn from the running bundle's CFBundleName.
+    Framework Python reports 'Python', so we overwrite that key in the in-memory
+    bundle info dictionaries BEFORE AppKit builds the menu.
+    """
     try:
         from Foundation import NSProcessInfo
         NSProcessInfo.processInfo().setProcessName_(APP_NAME)
+    except Exception:
+        pass
+    try:
+        from Foundation import NSBundle
+        bundle = NSBundle.mainBundle()
+        for getter in ("localizedInfoDictionary", "infoDictionary"):
+            info = getattr(bundle, getter)()
+            if info is not None:
+                info["CFBundleName"] = APP_NAME
+                info["CFBundleDisplayName"] = APP_NAME
     except Exception:
         pass
 
