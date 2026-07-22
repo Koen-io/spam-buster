@@ -85,6 +85,20 @@ def train(message, label):
     db.set_meta("lr_examples", examples() + 1)
 
 
+def backfill():
+    """One-time: replay past labelled events so the model reflects existing history."""
+    if examples() > 0:
+        return 0
+    rows = db.events_for_training()
+    n = 0
+    for r in rows:
+        msg = {"sender": r.get("sender"), "sender_domain": r.get("sender_domain"),
+               "sender_name": "", "subject": r.get("subject")}
+        train(msg, r["label"])
+        n += 1
+    return n
+
+
 def top_signals(limit=30):
     """Most influential learned weights, for the Reports screen."""
     W = _load()

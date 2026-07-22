@@ -514,6 +514,14 @@ def recent_events(limit=100):
         return [dict(r) for r in rows]
 
 
+def events_for_training():
+    with _lock:
+        rows = _c().execute(
+            "SELECT sender, sender_domain, subject, label FROM events "
+            "WHERE label IN ('spam','ham') ORDER BY ts").fetchall()
+        return [dict(r) for r in rows]
+
+
 # ---------------------------------------------------------------- trends / digest
 
 def daily_counts(days=14):

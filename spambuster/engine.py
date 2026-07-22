@@ -48,6 +48,13 @@ class Engine:
     def start(self):
         if self._thread and self._thread.is_alive():
             return
+        try:
+            from . import model
+            n = model.backfill()
+            if n:
+                log.info("Backfilled smart model from %d past examples", n)
+        except Exception as e:  # noqa
+            log.debug("model backfill skipped: %s", e)
         self._stop.clear()
         self._thread = threading.Thread(target=self._loop, daemon=True)
         self._thread.start()
