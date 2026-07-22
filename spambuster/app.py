@@ -57,6 +57,16 @@ def run_headless():
         engine.stop()
 
 
+def _hide_dock_icon():
+    """Run the agent as a menu-bar accessory — no Dock icon at all."""
+    try:
+        from AppKit import NSApplication
+        # 1 = NSApplicationActivationPolicyAccessory
+        NSApplication.sharedApplication().setActivationPolicy_(1)
+    except Exception:
+        pass
+
+
 def run_menubar():
     import rumps
 
@@ -79,6 +89,10 @@ def run_menubar():
                 None,
                 rumps.MenuItem("Quit Spam Buster", callback=self.on_quit),
             ]
+
+        @rumps.timer(1)
+        def _accessory(self, _):
+            _hide_dock_icon()  # idempotent; ensures no Dock icon for the agent
 
         @rumps.timer(15)
         def refresh(self, _):

@@ -22,6 +22,7 @@ def _become_regular_app():
             img = NSImage.alloc().initWithContentsOfFile_(icon_path)
             if img:
                 app.setApplicationIconImage_(img)
+        app.activateIgnoringOtherApps_(True)
     except Exception:
         pass
 

@@ -57,7 +57,8 @@ cat > "$APP_BUNDLE/Contents/MacOS/spambuster" <<LAUNCH
 #!/bin/bash
 export SB_APP_EXEC="\$0"
 DIR="$APPDIR"
-exec "$VENV_PY" "\$DIR/run.py" "\$@"
+# exec -a sets the process name so the dock/ps show "Spam Buster", not "Python".
+exec -a "Spam Buster" "$VENV_PY" "\$DIR/run.py" "\$@"
 LAUNCH
 chmod +x "$APP_BUNDLE/Contents/MacOS/spambuster"
 
