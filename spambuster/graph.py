@@ -120,10 +120,11 @@ def get_message(token, graph_id):
 
 
 def get_message_full(token, graph_id):
-    """Fetch headers + HTML body for deep analysis (auth, phishing, trackers)."""
+    """Fetch headers + body + reply-to + attachments for deep analysis."""
     url = (f"{BASE}/me/messages/{graph_id}"
-           f"?$select=id,internetMessageId,subject,from,receivedDateTime,isRead,"
-           f"bodyPreview,body,internetMessageHeaders")
+           f"?$select=id,internetMessageId,subject,from,replyTo,receivedDateTime,isRead,"
+           f"bodyPreview,body,hasAttachments,internetMessageHeaders"
+           f"&$expand=attachments($select=name,contentType,size)")
     r = requests.get(url, headers=_headers(token), timeout=TIMEOUT)
     if r.status_code == 404:
         return None
@@ -134,7 +135,44 @@ def get_message_full(token, graph_id):
     body = m.get("body") or {}
     norm["html"] = body.get("content") or ""
     norm["headers"] = m.get("internetMessageHeaders") or []
+    # reply-to domains
+    rt = []
+    for r0 in (m.get("replyTo") or []):
+        addr = ((r0.get("emailAddress") or {}).get("address") or "").lower()
+        if "@" in addr:
+            rt.append(addr.split("@", 1)[1])
+    norm["reply_to_domains"] = rt
+    # attachment names/types
+    norm["has_attachments"] = bool(m.get("hasAttachments"))
+    norm["attachments"] = [
+        {"name": a.get("name") or "", "type": a.get("contentType") or ""}
+        for a in (m.get("attachments") or [])]
     return norm
+
+
+# ---- folder resolution + message lookup (for destination-aware learning) ----
+
+def folder_id(token, wellknown):
+    """Resolve a well-known folder name (inbox, deleteditems) to its id."""
+    r = requests.get(f"{BASE}/me/mailFolders/{wellknown}?$select=id",
+                     headers=_headers(token), timeout=TIMEOUT)
+    if r.status_code != 200:
+        raise GraphError(f"folder_id failed: {r.status_code} {r.text[:150]}")
+    return r.json().get("id")
+
+
+def find_message_folder(token, internet_id):
+    """Return the parentFolderId of the message with this internetMessageId, or None."""
+    if not internet_id:
+        return None
+    safe = internet_id.replace("'", "''")
+    url = (f"{BASE}/me/messages?$filter=internetMessageId eq '{safe}'"
+           f"&$select=id,parentFolderId&$top=1")
+    r = requests.get(url, headers=_headers(token), timeout=TIMEOUT)
+    if r.status_code != 200:
+        return None
+    vals = r.json().get("value", [])
+    return vals[0].get("parentFolderId") if vals else None
 
 
 def move_message(token, graph_id, destination):

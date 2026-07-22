@@ -52,7 +52,12 @@ def create_app():
 
     @app.route("/splash")
     def splash():
-        return send_from_directory(paths.WEB_DIR, "splash.html")
+        try:
+            with open(os.path.join(paths.WEB_DIR, "splash.html"), encoding="utf-8") as f:
+                html = f.read().replace("{{VERSION}}", __version__)
+            return html
+        except Exception:
+            return send_from_directory(paths.WEB_DIR, "splash.html")
 
     @app.route("/<path:fname>")
     def static_files(fname):
@@ -230,11 +235,20 @@ def create_app():
                 suggestions.append({**s, "account": a["email"]})
         suggestions.sort(key=lambda x: x.get("confidence", 0), reverse=True)
         from . import model
+        det = cfg["detection"]
+        st = db.stats()
+        hint = None
+        if det.get("mode") != "auto" and st["spam_examples"] >= 20:
+            hint = {"type": "enable_auto"}
+        elif (det.get("mode") == "auto" and det.get("confidence_threshold", 95) > 90
+              and st["auto_deleted"] >= 15 and st["restored"] == 0):
+            hint = {"type": "lower_threshold", "from": det["confidence_threshold"], "to": 90}
         return jsonify({
             "rules": detector.rules_summary(min_observations=min_obs),
             "events": db.recent_events(60),
             "suggestions": suggestions[:50],
-            "stats": db.stats(),
+            "stats": st,
+            "hint": hint,
             "model": {"ready": model.is_ready(), "examples": model.examples(),
                       "min": model.MIN_EXAMPLES},
         })
@@ -251,6 +265,12 @@ def create_app():
     def api_quarantine_restore():
         data = request.get_json(force=True) or {}
         ok, msg = engine.restore(int(data.get("id")))
+        return jsonify({"ok": ok, "message": msg})
+
+    @app.route("/api/quarantine/keep_sender", methods=["POST"])
+    def api_quarantine_keep_sender():
+        data = request.get_json(force=True) or {}
+        ok, msg = engine.keep_sender(int(data.get("id")))
         return jsonify({"ok": ok, "message": msg})
 
     # ---------------------------------------------------- engine controls

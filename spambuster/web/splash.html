@@ -25,6 +25,8 @@
     opacity:0;animation:fade .5s 1.4s ease-out forwards}
   .fill{height:100%;border-radius:5px;background:linear-gradient(90deg,#5ea0ff,#2f74e6);
     transform-origin:left;transform:scaleX(0);animation:bar 1.9s 1.5s cubic-bezier(.5,0,.1,1) forwards}
+  .ver{position:fixed;bottom:22px;left:0;right:0;text-align:center;font-size:12px;
+    letter-spacing:.03em;color:#8a97a8;opacity:0;animation:fade .5s 1.7s ease-out forwards}
   @keyframes pop{0%{opacity:0;transform:scale(.6)}70%{transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}
   @keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
   @keyframes fade{from{opacity:0}to{opacity:1}}
@@ -47,5 +49,6 @@
     <div class="tag">The frontline defense against digital noise</div>
     <div class="track"><div class="fill"></div></div>
   </div>
+  <div class="ver">Version {{VERSION}}</div>
 </body>
 </html>

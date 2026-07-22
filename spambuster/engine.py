@@ -116,11 +116,27 @@ class Engine:
                 threatfeeds.maybe_update()
             except Exception:
                 pass
+            self._maybe_weekly_digest()
         finally:
             self.status["scanning"] = False
             self.status["last_scan"] = time.time()
             self.status["accounts"] = results
         return results
+
+    def _maybe_weekly_digest(self):
+        """Once a week, push a summary notification."""
+        try:
+            week = time.strftime("%G-%V")
+            if db.get_meta("last_digest_week") == week:
+                return
+            d = db.digest(7)
+            if db.get_meta("last_digest_week") is not None:  # skip the very first run
+                emit_alert("Spam Buster — this week",
+                           f"{d['spam_removed']} spam removed · {d['phishing']} phishing · "
+                           f"{d['restored']} corrections")
+            db.set_meta("last_digest_week", week)
+        except Exception:
+            pass
 
     def _scan_account(self, cfg, client_id, acct):
         acct_id = acct["id"]
@@ -155,14 +171,39 @@ class Engine:
         current_by_id = {m["graph_id"]: m for m in current}
         seen = db.get_seen_ids(acct_id)   # {graph_id: is_read}
 
-        # 1) Detect disappearances = things you removed since last scan.
+        # 1) Detect disappearances = things you moved/removed since last scan.
+        folder_ids = self._folder_ids(token, acct_id)
         for gid, was_read in seen.items():
             if gid in current_by_id:
                 continue
             prev = db.get_seen(acct_id, gid)
             db.delete_seen(acct_id, gid)
-            if prev and not was_read:
-                # Deleted while unread -> confirmed spam.
+            if not prev or was_read:
+                continue   # you engaged with it -> neutral
+
+            # Where did it go? Inbox/another folder = you rescued it (HAM);
+            # Deleted Items or expunged = spam.
+            dest = None
+            try:
+                dest = graph.find_message_folder(token, prev.get("internet_id"))
+            except Exception:
+                dest = None
+            inbox_id = folder_ids.get("inbox")
+            deleted_id = folder_ids.get("deleted")
+
+            if dest and inbox_id and dest == inbox_id:
+                detector.learn(acct_id, prev, label="ham", source="user",
+                               kind="marked_not_spam")
+                info["learned"] += 1
+                log.info("learned HAM (rescued to Inbox): %s | %s",
+                         prev.get("sender"), (prev.get("subject") or "")[:60])
+            elif dest and deleted_id and dest != deleted_id:
+                # moved to some other folder (Archive, a label) -> kept -> ham
+                detector.learn(acct_id, prev, label="ham", source="user",
+                               kind="marked_not_spam")
+                info["learned"] += 1
+            else:
+                # in Deleted Items, or gone/expunged -> confirmed spam
                 detector.learn(acct_id, prev, label="spam", source="user",
                                kind="deleted_unread")
                 info["learned"] += 1
@@ -210,6 +251,20 @@ class Engine:
 
         db.set_meta(f"suggestions:{acct_id}", suggestions[:100])
         return info
+
+    def _folder_ids(self, token, acct_id):
+        """Resolve & cache the inbox / deleted-items folder ids for an account."""
+        cached = db.get_meta(f"folders:{acct_id}")
+        if cached and cached.get("inbox") and cached.get("deleted"):
+            return cached
+        ids = {}
+        try:
+            ids["inbox"] = graph.folder_id(token, "inbox")
+            ids["deleted"] = graph.folder_id(token, "deleteditems")
+            db.set_meta(f"folders:{acct_id}", ids)
+        except Exception as e:  # noqa
+            log.debug("folder id resolve failed: %s", e)
+        return ids
 
     def _protect(self, token, acct_id, m, is_new):
         """Return analysis for a message, fetching+storing it once when new."""
@@ -298,6 +353,15 @@ class Engine:
 
     def mark_not_spam(self, qid):
         """Alias kept for clarity; same as restore."""
+        return self.restore(qid)
+
+    def keep_sender(self, qid):
+        """Restore a quarantined item AND add its sender to Friends (always keep)."""
+        item = db.get_quarantine(qid)
+        if not item:
+            return False, "not found"
+        if item.get("sender"):
+            db.list_add("allow_sender", item["sender"])
         return self.restore(qid)
 
     # -------------------------------------------------- accounts / folders

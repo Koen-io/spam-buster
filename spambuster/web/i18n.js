@@ -39,7 +39,10 @@ const I18N = {
     "q.title": "Quarantined (auto-deleted, recoverable)", "q.empty": "Empty quarantine",
     "q.desc": "These were moved to Deleted Items. Restore puts them back in your Inbox and teaches Spam Buster it was “not spam”. Items older than 30 days clear automatically.",
     "q.restored": "Restored", "q.nothing": "Nothing quarantined. 🎉", "q.none": "None.",
-    "q.undo": "Undo · not spam",
+    "q.undo": "Undo · not spam", "q.keep": "Always keep sender",
+    "hint.enable": "You’ve trained {0} spam examples — switch to Auto-delete for hands-off cleanup.",
+    "hint.lower": "No mistakes so far — you can safely lower auto-delete to {0}%.",
+    "hint.apply": "Apply",
 
     "set.accounts": "Email accounts", "set.addph": "name@hotmail.com", "set.add": "Add account",
     "set.detection": "Detection", "set.mode": "Mode",
@@ -141,7 +144,10 @@ const I18N = {
     "q.title": "In quarantaine (auto-verwijderd, herstelbaar)", "q.empty": "Quarantaine legen",
     "q.desc": "Deze zijn naar Verwijderde items verplaatst. Herstellen zet ze terug in je Inbox en leert Spam Buster dat het “geen spam” was. Items ouder dan 30 dagen worden automatisch gewist.",
     "q.restored": "Hersteld", "q.nothing": "Niets in quarantaine. 🎉", "q.none": "Geen.",
-    "q.undo": "Ongedaan · geen spam",
+    "q.undo": "Ongedaan · geen spam", "q.keep": "Afzender altijd behouden",
+    "hint.enable": "Je hebt {0} spam-voorbeelden getraind — schakel over naar Auto-verwijderen voor handenvrij opschonen.",
+    "hint.lower": "Nog geen fouten — je kunt auto-verwijderen veilig verlagen naar {0}%.",
+    "hint.apply": "Toepassen",
 
     "set.accounts": "E-mailaccounts", "set.addph": "naam@hotmail.com", "set.add": "Account toevoegen",
     "set.detection": "Detectie", "set.mode": "Modus",

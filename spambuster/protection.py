@@ -242,6 +242,75 @@ def detect_unsubscribe(headers):
     }
 
 
+# ----------------------------------------------------------------- attachments
+
+_DANGEROUS_EXT = {
+    "exe", "scr", "com", "pif", "bat", "cmd", "msi", "vbs", "vbe", "js", "jse",
+    "jar", "wsf", "wsh", "hta", "ps1", "reg", "lnk", "iso", "img", "apk",
+    "docm", "xlsm", "pptm", "dotm",  # macro-enabled office
+}
+_ARCHIVE_EXT = {"zip", "rar", "7z", "gz", "cab", "ace"}
+
+
+def check_attachments(attachments):
+    """Return (reasons, score_add) for dangerous attachments."""
+    reasons, score = [], 0
+    for a in attachments or []:
+        name = (a.get("name") or "").lower().strip()
+        if not name or "." not in name:
+            continue
+        exts = name.rsplit(".", 2)[1:]
+        last = exts[-1]
+        if last in _DANGEROUS_EXT:
+            reasons.append(f"Dangerous attachment (.{last}: {name[:40]})")
+            score += 55
+        elif last in {"html", "htm"}:
+            reasons.append(f"HTML attachment — common phishing trick ({name[:40]})")
+            score += 35
+        elif len(exts) == 2 and exts[0] in ("pdf", "doc", "xls", "jpg", "png", "txt"):
+            reasons.append(f"Double-extension attachment ({name[:40]})")
+            score += 45
+    return reasons, min(score, 80)
+
+
+# ----------------------------------------------------------------- impersonation
+
+_HOMOGLYPH = str.maketrans({"0": "o", "1": "l", "3": "e", "4": "a", "5": "s",
+                            "7": "t", "8": "b", "$": "s", "|": "l"})
+
+
+def _norm(s):
+    return (s or "").lower().translate(_HOMOGLYPH).replace("-", "")
+
+
+def _levenshtein(a, b):
+    if a == b:
+        return 0
+    if abs(len(a) - len(b)) > 2:
+        return 3
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+        prev = cur
+    return prev[-1]
+
+
+def check_impersonation(sender_domain, trusted_domains):
+    """Sender domain looks like (but isn't) a trusted/friend domain → impersonation."""
+    sd = _registrable(sender_domain)
+    if not sd:
+        return None
+    for td in trusted_domains:
+        td = _registrable(td)
+        if not td or td == sd:
+            continue
+        if _norm(sd) == _norm(td) or _levenshtein(sd, td) <= 1:
+            return f"Sender “{sd}” looks like your trusted “{td}” — possible impersonation"
+    return None
+
+
 # ----------------------------------------------------------------- top-level
 
 def analyze(full_message):
@@ -259,6 +328,32 @@ def analyze(full_message):
     if auth["spoofing"]:
         phish_score = min(100, phish_score + 30)
         phish_reasons = ["Sender failed authentication (possible spoofing)"] + phish_reasons
+
+    # dangerous attachments
+    att_reasons, att_score = check_attachments(full_message.get("attachments"))
+    if att_reasons:
+        phish_score = min(100, phish_score + att_score)
+        phish_reasons = att_reasons + phish_reasons
+
+    # From vs Reply-To domain mismatch
+    rt = full_message.get("reply_to_domains") or []
+    if rt and sender_domain:
+        sd = _registrable(sender_domain)
+        if all(_registrable(d) != sd for d in rt):
+            phish_score = min(100, phish_score + 22)
+            phish_reasons = [f"Replies go to a different domain ({_registrable(rt[0])})"] + phish_reasons
+
+    # Friend-impersonation (look-alike of a trusted domain)
+    try:
+        from . import database as db
+        trusted = db.list_values("allow_sender")
+        trusted_domains = [d for d in trusted if "@" not in d]
+        imp = check_impersonation(sender_domain, trusted_domains)
+        if imp:
+            phish_score = min(100, phish_score + 45)
+            phish_reasons = [imp] + phish_reasons
+    except Exception:
+        pass
 
     return {
         "auth": auth,

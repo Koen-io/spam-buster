@@ -186,7 +186,21 @@ async function loadReports() {
       <div class="sub">${esc(e.sender || "")} · ${ago(e.ts)}</div></div>
       <span class="pill ${e.label === "spam" ? "spam":"ham"}">${labelFor(e.kind)}</span></div>`).join("")
     : `<div class="muted">No activity yet.</div>`;
+  const h = r.hint, hb = $("reports-hint");
+  if (hb) {
+    if (h) {
+      const msg = h.type === "enable_auto" ? t("hint.enable", (STATE.stats||{}).spam_examples||0) : t("hint.lower", h.to);
+      const btn = h.type === "enable_auto"
+        ? `<button class="btn primary" onclick="setMode('auto')">${t("mode.auto")}</button>`
+        : `<button class="btn primary" onclick="applyThreshold(${h.to})">${t("hint.apply")}</button>`;
+      hb.innerHTML = `<div>💡 ${esc(msg)}</div>${btn}`; hb.classList.remove("hidden");
+    } else hb.classList.add("hidden");
+  }
   loadDigest(); loadTrends();
+}
+async function applyThreshold(v) {
+  await post("/api/settings", {detection: {...STATE.detection, confidence_threshold: v}});
+  toast(t("toast.saved")); await refresh(); loadReports();
 }
 async function loadDigest() {
   const d = await api("/api/digest");
@@ -285,8 +299,10 @@ async function loadQuarantine() {
   $("q-active").innerHTML = q.active.length ? q.active.map(it => `
     <div class="row"><div class="main">
       <div>${esc(it.subject || "(no subject)")} <span class="conf">${it.confidence ?? ""}%</span></div>
-      <div class="sub">${esc(it.sender || "")} · ${(it.reasons||[]).slice(0,1).map(esc).join("")}</div></div>
-    <button class="btn tiny" onclick="restore(${it.id})">${t("q.undo")}</button></div>`).join("")
+      <div class="sub" style="white-space:normal;max-width:none">${esc(it.sender || "")}${(it.reasons||[]).length ? " · " + (it.reasons||[]).map(esc).join(" · ") : ""}</div></div>
+    <div style="display:flex;gap:6px;flex-shrink:0">
+      <button class="btn tiny" onclick="restore(${it.id})">${t("q.undo")}</button>
+      <button class="btn tiny ghost" onclick="keepSender(${it.id})">${t("q.keep")}</button></div></div>`).join("")
     : `<div class="muted">${t("q.nothing")}</div>`;
   $("q-restored").innerHTML = q.restored.length ? q.restored.map(it =>
     `<div class="row"><div class="main"><div>${esc(it.subject||"")}</div><div class="sub">${esc(it.sender||"")}</div></div>
@@ -295,6 +311,11 @@ async function loadQuarantine() {
 async function restore(id) {
   const r = await post("/api/quarantine/restore", {id});
   toast(r.ok ? t("toast.restored") : ("Failed: " + r.message));
+  loadQuarantine(); refresh();
+}
+async function keepSender(id) {
+  const r = await post("/api/quarantine/keep_sender", {id});
+  toast(r.ok ? "✓ Added to Friends & restored" : ("Failed: " + r.message));
   loadQuarantine(); refresh();
 }
 
