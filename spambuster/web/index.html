@@ -18,8 +18,8 @@
 </div>
 
 <header class="topbar">
-  <div class="brand">
-    <div class="logo">🛡️</div>
+  <div class="brand" onclick="showTab('settings')" title="Open Settings" role="button">
+    <div class="logo">🛡️<span class="logo-gear">⚙︎</span></div>
     <div>
       <div class="brand-name">Spam Buster</div>
       <div class="brand-sub">v<span id="version">–</span> · <span id="mode-badge" class="badge">…</span></div>
@@ -28,6 +28,7 @@
   <div class="top-actions">
     <button id="pause-btn" class="btn ghost" onclick="togglePause()">Pause</button>
     <button class="btn ghost" onclick="scanNow()">Scan now</button>
+    <button class="btn ghost" onclick="showTab('settings')" title="Settings">⚙︎ Settings</button>
   </div>
 </header>
 

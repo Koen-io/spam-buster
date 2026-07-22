@@ -45,13 +45,23 @@ body {
 @media (prefers-color-scheme: light){
   .topbar{ background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.5)); }
 }
-.brand { display:flex; align-items:center; gap:14px; }
+.brand { display:flex; align-items:center; gap:14px; cursor:pointer;
+  border-radius:12px; padding:4px 8px 4px 4px; transition: background .15s ease; }
+.brand:hover { background: rgba(255,255,255,0.06); }
 .logo {
+  position:relative;
   width:46px; height:46px; border-radius:13px; font-size:24px;
   display:grid; place-items:center;
   background: linear-gradient(135deg, var(--accent), var(--accent2));
   box-shadow: var(--shadow);
 }
+.logo-gear {
+  position:absolute; right:-4px; bottom:-4px; font-size:13px; line-height:1;
+  width:20px; height:20px; border-radius:50%; display:grid; place-items:center;
+  background: var(--card); color: var(--text); border:1px solid var(--border);
+  opacity:0; transform: scale(0.7); transition: all .15s ease;
+}
+.brand:hover .logo-gear { opacity:1; transform: scale(1); }
 .brand-name { font-size:20px; font-weight:700; letter-spacing:-0.3px; }
 .brand-sub { font-size:12px; color: var(--muted); margin-top:2px; }
 .top-actions { display:flex; gap:10px; }
