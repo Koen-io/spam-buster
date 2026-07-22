@@ -208,7 +208,27 @@ async function loadReports() {
       hb.innerHTML = `<div>💡 ${esc(msg)}</div>${btn}`; hb.classList.remove("hidden");
     } else hb.classList.add("hidden");
   }
-  loadDigest(); loadTrends();
+  loadDigest(); loadTrends(); loadFlagged();
+}
+async function loadFlagged() {
+  const el = $("flagged-list"); if (!el) return;
+  const r = await api("/api/flagged");
+  const thr = (STATE.detection || {}).confidence_threshold || 95;
+  el.innerHTML = (r.items && r.items.length) ? r.items.map(x => `
+    <div class="row"><div class="main">
+      <div>${esc(x.subject || "(no subject)")} <span class="pill ${x.confidence>=thr?'spam':'warn'}">${x.confidence}%</span></div>
+      <div class="sub" style="white-space:normal;max-width:none">${esc(x.sender || "")}${x.account?` · ${esc(x.account)}`:""}${(x.reasons||[]).length?` · ${esc((x.reasons||[])[0])}`:""}</div></div>
+    <div style="display:flex;gap:6px;flex-shrink:0">
+      <button class="btn tiny ghost" data-sender="${esc(x.sender||'')}" data-domain="${esc(x.sender_domain||'')}" data-subject="${esc(x.subject||'')}" data-account="${esc(x.account_id||'')}" onclick="notSpam(this)">${t("com.notspam")}</button>
+      <button class="btn tiny danger" data-account-id="${esc(x.account_id||'')}" data-graph-id="${esc(x.graph_id||'')}" onclick="flagDelete(this)">${t("com.delete")}</button>
+    </div></div>`).join("")
+    : `<div class="muted">${t("rep.flaggednone")}</div>`;
+}
+async function flagDelete(btn) {
+  await post("/api/message/delete", {account_id: btn.dataset.accountId, graph_id: btn.dataset.graphId});
+  toast(t("com.delete"));
+  const row = btn.closest(".row"); if (row) row.style.display = "none";
+  refresh();
 }
 async function applyThreshold(v) {
   await post("/api/settings", {detection: {...STATE.detection, confidence_threshold: v}});

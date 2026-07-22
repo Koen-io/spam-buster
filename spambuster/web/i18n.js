@@ -23,6 +23,9 @@ const I18N = {
     "rep.rulesdesc": "Learned from mail you deleted unread. It only auto-deletes when a sender or domain is a consistent, confident match — or when you’ve blocklisted it.",
     "rep.words": "Words that signal spam", "rep.safe": "Senders you trust",
     "rep.activity": "Recent activity",
+    "rep.flagged": "Flagged emails — review",
+    "rep.flaggeddesc": "Everything currently in your Junk, rated by Spam Buster (highest first). Mark false positives “No Spam”, or delete confirmed spam.",
+    "rep.flaggednone": "Nothing flagged right now. 🎉",
     "dig.removed": "removed", "dig.phishing": "phishing", "dig.spoofed": "spoofed",
     "dig.trackers": "trackers", "dig.learned": "learned", "dig.restored": "restored",
 
@@ -129,6 +132,9 @@ const I18N = {
     "rep.rulesdesc": "Geleerd van e-mail die je ongelezen verwijderde. Verwijdert alleen automatisch bij een consistente, zekere match — of als je het geblokkeerd hebt.",
     "rep.words": "Woorden die op spam wijzen", "rep.safe": "Afzenders die je vertrouwt",
     "rep.activity": "Recente activiteit",
+    "rep.flagged": "Gemarkeerde e-mails — controleren",
+    "rep.flaggeddesc": "Alles wat nu in Ongewenst staat, beoordeeld door Spam Buster (hoogste eerst). Markeer valse meldingen als “Geen Spam”, of verwijder bevestigde spam.",
+    "rep.flaggednone": "Momenteel niets gemarkeerd. 🎉",
     "dig.removed": "verwijderd", "dig.phishing": "phishing", "dig.spoofed": "vervalst",
     "dig.trackers": "trackers", "dig.learned": "geleerd", "dig.restored": "hersteld",
 

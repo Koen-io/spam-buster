@@ -215,6 +215,7 @@ class Engine:
         threshold = cfg["detection"].get("confidence_threshold", 95)
         min_obs = cfg["detection"].get("min_observations", 3)
         suggestions = []
+        flagged = []
 
         deep = cfg["detection"].get("deep_scan", True)
         for m in current:
@@ -233,6 +234,12 @@ class Engine:
 
             conf = round(prob * 100)
 
+            # Record every message + its rating for the "Flagged emails" review.
+            flagged.append({
+                "graph_id": gid, "sender": m["sender"], "sender_domain": m["sender_domain"],
+                "subject": m["subject"], "confidence": conf, "reasons": reasons[:3],
+            })
+
             # Your blocklist always deletes, in any mode.
             blocked = (db.list_has("block_sender", m["sender"])
                        or db.list_has("block_domain", m["sender_domain"]))
@@ -250,6 +257,8 @@ class Engine:
                     info["auto_deleted"] += 1
 
         db.set_meta(f"suggestions:{acct_id}", suggestions[:100])
+        flagged.sort(key=lambda x: x["confidence"], reverse=True)
+        db.set_meta(f"flagged:{acct_id}", flagged[:200])
         return info
 
     def _folder_ids(self, token, acct_id):
@@ -405,6 +414,9 @@ class Engine:
         db.add_event(account_id, kind="auto_deleted", label="spam", source="user",
                      sender=seen.get("sender"), subject=seen.get("subject"))
         return True, "deleted"
+
+    def delete_message(self, account_id, graph_id, reason="Deleted from Flagged list"):
+        return self.delete_newsletter(account_id, graph_id, reason=reason)
 
     def bulk_delete_newsletters(self):
         deleted = 0

@@ -378,6 +378,25 @@ def create_app():
         threatfeeds.update_async()
         return jsonify({"ok": True})
 
+    @app.route("/api/flagged")
+    def api_flagged():
+        cfg = config.load()
+        floor = int(request.args.get("min", 50))
+        emails = {a["id"]: a["email"] for a in cfg.get("accounts", [])}
+        items = []
+        for aid, email in emails.items():
+            for f in (db.get_meta(f"flagged:{aid}", []) or []):
+                if f.get("confidence", 0) >= floor:
+                    items.append({**f, "account_id": aid, "account": email})
+        items.sort(key=lambda x: x.get("confidence", 0), reverse=True)
+        return jsonify({"items": items[:150], "count": len(items)})
+
+    @app.route("/api/message/delete", methods=["POST"])
+    def api_message_delete():
+        d = request.get_json(force=True) or {}
+        ok, msg = engine.delete_message(d.get("account_id"), d.get("graph_id"))
+        return jsonify({"ok": ok, "message": msg})
+
     @app.route("/api/notspam", methods=["POST"])
     def api_notspam():
         d = request.get_json(force=True) or {}
