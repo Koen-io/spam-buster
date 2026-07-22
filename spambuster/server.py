@@ -107,6 +107,10 @@ def create_app():
             allowed["first_run"] = patch["first_run"]
         if "language" in patch and patch["language"] in ("en", "nl"):
             allowed["language"] = patch["language"]
+        if "threat" in patch:
+            allowed["threat"] = {k: patch["threat"][k]
+                                 for k in ("abuse_ch_key", "enabled", "auto_update")
+                                 if k in patch["threat"]}
         cfg = config.update(allowed)
         engine.wake()
         return jsonify({"ok": True, "detection": cfg["detection"]})
@@ -284,6 +288,7 @@ def create_app():
             "block_domain": db.list_all("block_domain"),
             "block_sender": db.list_all("block_sender"),
             "allow_sender": db.list_all("allow_sender"),
+            "watch_word": db.list_all("watch_word"),
         })
 
     @app.route("/api/lists/add", methods=["POST"])
@@ -291,7 +296,7 @@ def create_app():
         data = request.get_json(force=True) or {}
         kind = data.get("kind")
         value = (data.get("value") or "").strip().lower().lstrip("@")
-        if kind not in ("block_domain", "block_sender", "allow_sender"):
+        if kind not in ("block_domain", "block_sender", "allow_sender", "watch_word"):
             return jsonify({"ok": False, "error": "bad list type"}), 400
         if not value:
             return jsonify({"ok": False, "error": "Enter a value."}), 400
@@ -333,6 +338,25 @@ def create_app():
     def api_quarantine_empty():
         n = engine.empty_quarantine()
         return jsonify({"ok": True, "emptied": n})
+
+    @app.route("/api/threat")
+    def api_threat():
+        from . import threatfeeds
+        cfg = config.load()
+        th = cfg.get("threat", {})
+        return jsonify({
+            "counts": threatfeeds.counts(),
+            "has_key": bool(th.get("abuse_ch_key")),
+            "enabled": th.get("enabled", True),
+            "last_update": th.get("last_update"),
+            "last_result": th.get("last_result"),
+        })
+
+    @app.route("/api/threat/update", methods=["POST"])
+    def api_threat_update():
+        from . import threatfeeds
+        threatfeeds.update_async()
+        return jsonify({"ok": True})
 
     @app.route("/api/scan", methods=["POST"])
     def api_scan():

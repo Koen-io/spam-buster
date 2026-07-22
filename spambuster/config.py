@@ -53,6 +53,14 @@ DEFAULT_CONFIG = {
 
     "language": "en",   # en | nl
 
+    "threat": {
+        "abuse_ch_key": "",      # free abuse.ch Auth-Key (for URLhaus / ThreatFox)
+        "enabled": True,         # use threat intelligence in scoring
+        "auto_update": True,     # refresh feeds daily
+        "last_update": None,
+        "last_result": None,
+    },
+
     "first_run": True,
 }
 

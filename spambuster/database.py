@@ -113,12 +113,19 @@ CREATE TABLE IF NOT EXISTS analysis (
 );
 
 CREATE TABLE IF NOT EXISTS lists (
-    kind   TEXT NOT NULL,   -- block_domain | block_sender | allow_sender (friends)
+    kind   TEXT NOT NULL,   -- block_domain | block_sender | allow_sender | watch_word
     value  TEXT NOT NULL,
     note   TEXT,
     added  REAL,
     PRIMARY KEY (kind, value)
 );
+
+CREATE TABLE IF NOT EXISTS threat_domains (
+    domain TEXT NOT NULL,
+    source TEXT NOT NULL,    -- urlhaus | threatfox | disposable
+    PRIMARY KEY (domain, source)
+);
+CREATE INDEX IF NOT EXISTS idx_threat_domain ON threat_domains(domain);
 """
 
 
@@ -504,6 +511,43 @@ def list_has(kind, value):
             (kind, value.strip().lower()),
         ).fetchone()
         return row is not None
+
+
+def list_values(kind):
+    with _lock:
+        rows = _c().execute("SELECT value FROM lists WHERE kind=?", (kind,)).fetchall()
+        return set(r["value"] for r in rows)
+
+
+# ---------------------------------------------------------------- threat intel
+
+def replace_threat(source, domains):
+    domains = {d.strip().lower() for d in domains if d and d.strip()}
+    with _lock:
+        _c().execute("DELETE FROM threat_domains WHERE source=?", (source,))
+        _c().executemany(
+            "INSERT OR IGNORE INTO threat_domains(domain, source) VALUES(?,?)",
+            [(d, source) for d in domains])
+        _c().commit()
+    return len(domains)
+
+
+def is_threat(domain, sources):
+    if not domain:
+        return None
+    ph = ",".join("?" * len(sources))
+    with _lock:
+        row = _c().execute(
+            f"SELECT source FROM threat_domains WHERE domain=? AND source IN ({ph}) LIMIT 1",
+            (domain.strip().lower(), *sources)).fetchone()
+        return row["source"] if row else None
+
+
+def threat_counts():
+    with _lock:
+        rows = _c().execute(
+            "SELECT source, COUNT(*) AS n FROM threat_domains GROUP BY source").fetchall()
+        return {r["source"]: r["n"] for r in rows}
 
 
 def recent_events(limit=100):

@@ -222,6 +222,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
   background: #fff; box-shadow: var(--shadow-sm); }
 .tag.block { color: var(--danger); border-color: rgba(229,72,77,0.28); background: var(--danger-bg); }
 .tag.allow { color: var(--ok); border-color: rgba(47,158,68,0.28); background: var(--ok-bg); }
+.tag.watch { color: var(--warn); border-color: rgba(232,147,12,0.28); background: var(--warn-bg); }
 .tag button { background: none; border: none; color: inherit; cursor: pointer;
   font-size: 14px; opacity: 0.55; padding: 0; line-height: 1; }
 .tag button:hover { opacity: 1; }

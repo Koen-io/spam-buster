@@ -22,7 +22,7 @@ function showTab(name) {
   if (name === "reports") loadReports();
   if (name === "protection") loadProtection();
   if (name === "quarantine") loadQuarantine();
-  if (name === "settings") { fillSettings(); loadLists(); }
+  if (name === "settings") { fillSettings(); loadLists(); loadThreat(); }
 }
 
 // ---------------- state
@@ -392,6 +392,24 @@ async function loadLists() {
   $("block-domains").innerHTML = tags(l.block_domain, "block", "block_domain");
   $("block-senders").innerHTML = tags(l.block_sender, "block", "block_sender");
   $("allow-senders").innerHTML = tags(l.allow_sender, "allow", "allow_sender");
+  if ($("watch-words")) $("watch-words").innerHTML = tags(l.watch_word, "watch", "watch_word");
+}
+async function loadThreat() {
+  const th = await api("/api/threat"); const c = th.counts || {};
+  const mal = (c.urlhaus||0) + (c.threatfox||0), disp = c.disposable||0;
+  const parts = [];
+  if (mal || disp) parts.push(`${mal} ${t("threat.mal")}`, `${disp} ${t("threat.disp")}`);
+  const last = th.last_update ? t("threat.last", new Date(th.last_update).toLocaleString()) : t("threat.none");
+  if ($("threat-status")) $("threat-status").textContent = (parts.length ? parts.join(" · ") + " · " : "") + last;
+}
+async function updateThreat() {
+  if ($("threat-status")) $("threat-status").textContent = t("threat.updating");
+  await post("/api/threat/update");
+  setTimeout(loadThreat, 4000); setTimeout(loadThreat, 12000);
+}
+async function saveThreatKey() {
+  await post("/api/settings", {threat: {abuse_ch_key: $("threat-key").value.trim()}});
+  $("threat-key").value = ""; toast(t("toast.saved")); updateThreat();
 }
 function tags(items, cls, kind) {
   if (!items || !items.length) return `<span class="muted small">${t("com.noneyet")}</span>`;

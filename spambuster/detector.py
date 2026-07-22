@@ -131,6 +131,24 @@ def score(message):
     log_odds += token_contrib
     strongest.extend(token_reasons)
 
+    # ---- soft signals: disposable sender + your "words to watch" ----
+    try:
+        from . import threatfeeds
+        if f["domain"] and threatfeeds.is_disposable(f["domain"]):
+            log_odds += 1.1
+            strongest.append((1.1, f"Sender uses a disposable/temp-mail domain ({f['domain']})"))
+    except Exception:
+        pass
+    try:
+        watch = db.list_values("watch_word")
+        if watch:
+            for tok in set(f["tokens"]):
+                if tok in watch:
+                    log_odds += 0.9
+                    strongest.append((0.9, f"Contains a word you flagged: “{tok}”"))
+    except Exception:
+        pass
+
     prob = _sigmoid(log_odds)
 
     # Once the online logistic-regression model has enough training, use its

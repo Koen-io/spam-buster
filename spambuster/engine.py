@@ -55,6 +55,11 @@ class Engine:
                 log.info("Backfilled smart model from %d past examples", n)
         except Exception as e:  # noqa
             log.debug("model backfill skipped: %s", e)
+        try:
+            from . import threatfeeds
+            threatfeeds.maybe_update()
+        except Exception:
+            pass
         self._stop.clear()
         self._thread = threading.Thread(target=self._loop, daemon=True)
         self._thread.start()
@@ -101,9 +106,14 @@ class Engine:
                 if not acct.get("enabled", True):
                     continue
                 results[acct["id"]] = self._scan_account(cfg, client_id, acct)
-            # Housekeeping: retire old quarantine entries from the recovery list.
+            # Housekeeping: retire old quarantine entries; refresh threat feeds daily.
             try:
                 db.purge_quarantine_older(cfg.get("quarantine_retention_days", 30))
+            except Exception:
+                pass
+            try:
+                from . import threatfeeds
+                threatfeeds.maybe_update()
             except Exception:
                 pass
         finally:

@@ -226,6 +226,30 @@
     </div>
 
     <div class="card">
+      <div class="card-label" data-i18n="set.watch">Words to watch</div>
+      <div class="muted small" data-i18n="set.watchdesc">These words make matching mail more likely to be flagged — they never delete anything on their own.</div>
+      <div id="watch-words" class="taglist"></div>
+      <div class="field-row">
+        <input id="new-watch" class="input" data-i18n-ph="set.watchph" placeholder="word">
+        <button class="btn" onclick="addList('watch_word','new-watch')" data-i18n="set.watchadd">Add word</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label" data-i18n="set.threat">Threat intelligence</div>
+      <div class="muted small" data-i18n="set.threatdesc">Free, open feeds that flag known-malicious links and throwaway senders.</div>
+      <div id="threat-status" class="muted small" style="margin:10px 0;color:var(--accent)"></div>
+      <div class="field-row">
+        <input id="threat-key" class="input" data-i18n-ph="set.threatkeyph" placeholder="abuse.ch Auth-Key (optional)">
+        <button class="btn" onclick="saveThreatKey()" data-i18n="set.threatsave">Save key</button>
+      </div>
+      <div class="field-row">
+        <button class="btn primary" onclick="updateThreat()" data-i18n="set.threatupdate">Update feeds now</button>
+        <a class="btn ghost" href="https://auth.abuse.ch/" target="_blank" data-i18n="set.threatget" style="text-decoration:none">Get a free key ↗</a>
+      </div>
+    </div>
+
+    <div class="card">
       <div class="card-label" data-i18n="set.language">Language</div>
       <div class="mode-quick">
         <button class="chip" data-lang="en" onclick="setLanguage('en')">English</button>

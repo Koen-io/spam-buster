@@ -156,6 +156,17 @@ def analyze_links(html, sender_domain):
                     score += 25
                     break
 
+    # known-malicious link host (abuse.ch URLhaus / ThreatFox)
+    try:
+        from . import threatfeeds
+        for d in link_domains:
+            if threatfeeds.is_malicious(d):
+                reasons.append(f"Link to a known-malicious site ({d}, abuse.ch)")
+                score += 60
+                break
+    except Exception:
+        pass
+
     # credential-harvest language + a link present
     if link_domains:
         hits = [p for p in _CRED_PHRASES if p in text_l]
