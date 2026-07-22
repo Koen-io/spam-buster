@@ -243,6 +243,15 @@ def create_app():
         elif (det.get("mode") == "auto" and det.get("confidence_threshold", 95) > 90
               and st["auto_deleted"] >= 15 and st["restored"] == 0):
             hint = {"type": "lower_threshold", "from": det["confidence_threshold"], "to": 90}
+        # Respect a temporary dismissal — bring the tip back only once the app has
+        # built more confidence (10 more confirmations) than when it was dismissed.
+        if hint:
+            snz = db.get_meta("hint_snooze", {}) or {}
+            s = snz.get(hint["type"])
+            if s is not None:
+                metric = st["spam_examples"] if hint["type"] == "enable_auto" else st["auto_deleted"]
+                if metric < s.get("at", 0) + 10:
+                    hint = None
         return jsonify({
             "rules": detector.rules_summary(min_observations=min_obs),
             "events": db.recent_events_deduped(40),
@@ -284,6 +293,19 @@ def create_app():
             "newsletters": db.list_newsletters(200),
             "safe_senders": detector.safe_senders(30),
         })
+
+    @app.route("/api/hint/dismiss", methods=["POST"])
+    def api_hint_dismiss():
+        d = request.get_json(force=True) or {}
+        kind = d.get("type")
+        if kind not in ("enable_auto", "lower_threshold"):
+            return jsonify({"ok": False}), 400
+        st = db.stats()
+        metric = st["spam_examples"] if kind == "enable_auto" else st["auto_deleted"]
+        snz = db.get_meta("hint_snooze", {}) or {}
+        snz[kind] = {"at": metric}
+        db.set_meta("hint_snooze", snz)
+        return jsonify({"ok": True})
 
     @app.route("/api/rule/undo", methods=["POST"])
     def api_rule_undo():

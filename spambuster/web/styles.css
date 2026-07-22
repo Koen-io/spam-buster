@@ -256,6 +256,26 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
   max-height: 340px; overflow: auto; white-space: pre-wrap; }
 .hidden { display: none !important; }
 
+/* ---------- row action dropdown ---------- */
+.menu { position: relative; flex-shrink: 0; }
+.menu-list { position: absolute; right: 0; top: calc(100% + 5px); z-index: 30;
+  background: #fff; border: 1px solid var(--border-soft); border-radius: 11px;
+  box-shadow: var(--shadow-lg); padding: 6px; min-width: 176px; display: none; }
+.menu.open .menu-list { display: block; }
+.menu-list button { display: flex; align-items: center; gap: 9px; width: 100%;
+  text-align: left; background: none; border: none; padding: 9px 11px; border-radius: 8px;
+  font-size: 13px; color: #1f2733; cursor: pointer; }
+.menu-list button:hover { background: var(--card2); }
+.menu-list button.danger { color: #c0392b; }
+.menu-list button.danger:hover { background: rgba(192,57,43,0.08); }
+
+/* ---------- dismissable hint (top-left ×) ---------- */
+#reports-hint { position: relative; padding-left: 44px; }
+.hint-x { position: absolute; left: 12px; top: 12px; width: 22px; height: 22px;
+  border: none; border-radius: 50%; background: rgba(20,40,80,0.08); color: var(--muted);
+  font-size: 16px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
+.hint-x:hover { background: rgba(20,40,80,0.16); color: #1f2733; }
+
 /* ---------- email review popup ---------- */
 .modal:has(.mail-frame) { width: min(760px, 95vw); text-align: left; }
 .mail-head { border-bottom: 1px solid var(--border-soft); padding: 2px 0 12px; margin-bottom: 12px; }

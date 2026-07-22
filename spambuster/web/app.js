@@ -12,6 +12,28 @@ function toast(m) { const t = $("toast"); t.textContent = m; t.classList.add("sh
 function ago(ts) { if (!ts) return t("st.never"); const s = Math.max(0, Math.floor(Date.now()/1000 - ts));
   if (s < 60) return t("ago.s", s); if (s < 3600) return t("ago.m", Math.floor(s/60)); return t("ago.h", Math.floor(s/3600)); }
 function esc(s) { return (s||"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function escq(s) { return (s||"").replace(/'/g, "’").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+// ---------------- row action dropdown (keeps rows narrow so the UI always fits)
+function rowMenu(x) {
+  const d = `data-sender="${esc(x.sender||'')}" data-domain="${esc(x.sender_domain||'')}" data-subject="${esc(x.subject||'')}" data-account="${esc(x.account_id||'')}"`;
+  return `<div class="menu">
+    <button class="btn tiny ghost menu-btn" onclick="toggleMenu(this,event)">${t("com.actions")} ▾</button>
+    <div class="menu-list">
+      <button onclick="viewEmail('${escq(x.account_id||'')}','${escq(x.graph_id||'')}','${escq(x.sender||'')}','${escq(x.sender_domain||'')}','${escq(x.subject||'')}')">📄 ${t("com.view")}</button>
+      <button ${d} onclick="notSpam(this)">✓ ${t("com.notspam")}</button>
+      <button ${d} onclick="addFriend(this)">＋ ${t("com.friend")}</button>
+      <button class="danger" data-account-id="${esc(x.account_id||'')}" data-graph-id="${esc(x.graph_id||'')}" onclick="flagDelete(this)">🗑 ${t("com.delete")}</button>
+    </div></div>`;
+}
+function toggleMenu(btn, ev) {
+  if (ev) ev.stopPropagation();
+  const m = btn.closest(".menu");
+  const wasOpen = m.classList.contains("open");
+  document.querySelectorAll(".menu.open").forEach(x => x.classList.remove("open"));
+  if (!wasOpen) m.classList.add("open");
+}
+document.addEventListener("click", () => document.querySelectorAll(".menu.open").forEach(x => x.classList.remove("open")));
 
 // ---------------- tabs
 function showTab(name) {
@@ -213,7 +235,9 @@ async function loadReports() {
       const btn = h.type === "enable_auto"
         ? `<button class="btn primary" onclick="setMode('auto')">${t("mode.auto")}</button>`
         : `<button class="btn primary" onclick="applyThreshold(${h.to})">${t("hint.apply")}</button>`;
-      hb.innerHTML = `<div>💡 ${esc(msg)}</div>${btn}`; hb.classList.remove("hidden");
+      hb.innerHTML = `<button class="hint-x" title="${t('hint.dismiss')}" onclick="dismissHint('${h.type}')">×</button>
+        <div>💡 ${esc(msg)}</div>${btn}`;
+      hb.classList.remove("hidden");
     } else hb.classList.add("hidden");
   }
   loadFlagged();
@@ -333,12 +357,7 @@ async function loadFlagged() {
     <div class="row"><div class="main">
       <div>${esc(x.subject || "(no subject)")} <span class="pill ${x.confidence>=thr?'spam':'warn'}">${x.confidence}%</span></div>
       <div class="sub" style="white-space:normal;max-width:none">${esc(x.sender || "")}${x.account?` · ${esc(x.account)}`:""}${(x.reasons||[]).length?` · ${esc((x.reasons||[])[0])}`:""}</div></div>
-    <div style="display:flex;gap:6px;flex-shrink:0">
-      <button class="btn tiny ghost" onclick="viewEmail('${esc(x.account_id||'')}','${esc(x.graph_id||'')}','${esc(x.sender||'')}','${esc(x.sender_domain||'')}','${esc((x.subject||'').replace(/'/g,'’'))}')">${t("com.view")}</button>
-      <button class="btn tiny ghost" data-sender="${esc(x.sender||'')}" data-domain="${esc(x.sender_domain||'')}" data-subject="${esc(x.subject||'')}" data-account="${esc(x.account_id||'')}" onclick="notSpam(this)">${t("com.notspam")}</button>
-      <button class="btn tiny" data-sender="${esc(x.sender||'')}" data-domain="${esc(x.sender_domain||'')}" data-subject="${esc(x.subject||'')}" data-account="${esc(x.account_id||'')}" onclick="addFriend(this)">${t("com.friend")}</button>
-      <button class="btn tiny danger" data-account-id="${esc(x.account_id||'')}" data-graph-id="${esc(x.graph_id||'')}" onclick="flagDelete(this)">${t("com.delete")}</button>
-    </div></div>`).join("")
+    ${rowMenu(x)}</div>`).join("")
     : `<div class="muted">${t("rep.flaggednone")}</div>`;
 }
 async function addFriend(btn) {
@@ -353,6 +372,11 @@ async function flagDelete(btn) {
   toast(t("com.delete"));
   const row = btn.closest(".row"); if (row) row.style.display = "none";
   refresh();
+}
+async function dismissHint(type) {
+  await post("/api/hint/dismiss", {type});
+  const hb = $("reports-hint"); if (hb) hb.classList.add("hidden");
+  toast(t("hint.dismissed"));
 }
 async function applyThreshold(v) {
   await post("/api/settings", {detection: {...STATE.detection, confidence_threshold: v}});
@@ -412,18 +436,12 @@ async function loadProtection() {
     [t("prot.phishingcaught"), s.phishing], [t("prot.trackersseen"), s.trackers], [t("prot.newsletters"), s.newsletters_current],
   ].map(([l,n]) => `<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
 
-  const nsBtn = (x) => `<button class="btn tiny ghost" data-sender="${esc(x.sender||'')}" data-domain="${esc(x.sender_domain||'')}" data-subject="${esc(x.subject||'')}" data-account="${esc(x.account_id||'')}" onclick="notSpam(this)">${t("com.notspam")}</button>`;
-  const actBtns = (x) => `<div style="display:flex;gap:6px;flex-shrink:0">
-      <button class="btn tiny ghost" onclick="viewEmail('${esc(x.account_id||'')}','${esc(x.graph_id||'')}','${esc(x.sender||'')}','${esc(x.sender_domain||'')}','${esc((x.subject||'').replace(/'/g,'’'))}')">${t("com.view")}</button>
-      ${nsBtn(x)}
-      <button class="btn tiny" data-sender="${esc(x.sender||'')}" data-domain="${esc(x.sender_domain||'')}" data-subject="${esc(x.subject||'')}" data-account="${esc(x.account_id||'')}" onclick="addFriend(this)">${t("com.friend")}</button>
-      <button class="btn tiny danger" data-account-id="${esc(x.account_id||'')}" data-graph-id="${esc(x.graph_id||'')}" onclick="flagDelete(this)">${t("com.delete")}</button>
-    </div>`;
+  const viewBtn = (x) => `<button class="btn tiny ghost" onclick="viewEmail('${escq(x.account_id||'')}','${escq(x.graph_id||'')}','${escq(x.sender||'')}','${escq(x.sender_domain||'')}','${escq(x.subject||'')}')">${t("com.view")}</button>`;
   $("prot-phishing").innerHTML = p.phishing.length ? p.phishing.map(x => `
     <div class="row"><div class="main"><div>${esc(x.subject || "(no subject)")}
       <span class="pill spam">${x.phishing_score}%</span></div>
       <div class="sub" style="white-space:normal;max-width:none">${esc(x.sender || "")} · ${esc((x.phishing_reasons||[])[0] || "")}</div></div>
-      ${actBtns(x)}</div>`).join("")
+      ${rowMenu(x)}</div>`).join("")
     : `<div class="muted">${t("prot.none.phish")}</div>`;
 
   const safe = p.safe_senders || [];
@@ -431,11 +449,10 @@ async function loadProtection() {
     `<div class="row"><div class="main">${esc(sa.key)}</div><span class="pill ham">${t("prot.kept", sa.kept)}</span></div>`).join("")
     : `<div class="muted">${t("prot.none.safe")}</div>`;
 
-  const viewBtn = (x) => `<button class="btn tiny ghost" onclick="viewEmail('${esc(x.account_id||'')}','${esc(x.graph_id||'')}','${esc(x.sender||'')}','${esc(x.sender_domain||'')}','${esc((x.subject||'').replace(/'/g,'’'))}')">${t("com.view")}</button>`;
   $("prot-spoofing").innerHTML = p.spoofing.length ? p.spoofing.map(x => `
-    <div class="row"><div class="main"><div>${esc(x.subject || "(no subject)")}</div>
+    <div class="row"><div class="main"><div>${esc(x.subject || "(no subject)")} <span class="pill warn">${t("com.spoofed")}</span></div>
       <div class="sub">${esc(x.sender || "")} · spf:${esc(x.spf)} dkim:${esc(x.dkim)} dmarc:${esc(x.dmarc)}</div></div>
-      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0"><span class="pill warn">${t("com.spoofed")}</span>${viewBtn(x)}${nsBtn(x)}</div></div>`).join("")
+      ${rowMenu(x)}</div>`).join("")
     : `<div class="muted">${t("prot.none.spoof")}</div>`;
 
   $("prot-newsletters").innerHTML = p.newsletters.length ? p.newsletters.map(x => `
