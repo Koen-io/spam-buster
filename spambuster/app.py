@@ -93,6 +93,13 @@ def run_menubar():
     log.info("Spam Buster %s starting (menu bar). Dashboard: %s", __version__, url)
     threading.Thread(target=_startup_update_check, daemon=True).start()
 
+    def _notify(title, message):
+        try:
+            rumps.notification("Spam Buster", title, message)
+        except Exception:
+            pass
+    engine.ALERT_CALLBACK = _notify
+
     class SpamBusterApp(rumps.App):
         def __init__(self):
             icon = MENU_ICON if os.path.exists(MENU_ICON) else None
@@ -101,11 +108,12 @@ def run_menubar():
                 rumps.MenuItem("Open Spam Buster", callback=self.on_open),
                 rumps.MenuItem("Settings…", callback=self.on_settings),
                 None,
+                rumps.MenuItem("This week: …", callback=self.on_open),
+                rumps.MenuItem("Status: starting…", callback=None),
+                None,
                 rumps.MenuItem("Scan now", callback=self.on_scan),
                 rumps.MenuItem("Pause protection", callback=self.on_pause),
                 rumps.MenuItem("Check for updates…", callback=self.on_update),
-                None,
-                rumps.MenuItem("Status: starting…", callback=None),
                 None,
                 rumps.MenuItem("Quit Spam Buster", callback=self.on_quit),
             ]
@@ -116,12 +124,21 @@ def run_menubar():
 
         @rumps.timer(15)
         def refresh(self, _):
+            from . import database as db
             paused = engine.paused
             self.menu["Pause protection"].title = "Resume protection" if paused else "Pause protection"
             mode = config.load()["detection"]["mode"]
             last = engine.status.get("last_scan")
             when = "never" if not last else _ago(last)
             self.menu["Status: starting…"].title = f"Status: {'paused' if paused else mode} · scanned {when}"
+            try:
+                today = db.today_blocked()
+                dg = db.digest(7)
+                self.menu["This week: …"].title = (
+                    f"This week: {dg['spam_removed']} removed · {dg['phishing']} phishing")
+                self.title = f" {today}" if today else ""
+            except Exception:
+                pass
 
         def on_open(self, _): open_dashboard()
         def on_settings(self, _): open_dashboard("#settings")

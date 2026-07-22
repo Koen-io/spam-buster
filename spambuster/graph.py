@@ -47,20 +47,58 @@ def whoami(token):
     return d.get("mail") or d.get("userPrincipalName"), d.get("displayName")
 
 
-def list_junk(token, top=100):
-    """Return the current Junk-folder messages, newest first."""
-    url = (f"{BASE}/me/mailFolders/junkemail/messages"
+def list_folder_messages(token, folder="junkemail", top=100):
+    """Return a folder's messages, newest first. `folder` is a well-known name
+    (e.g. 'junkemail') or a folder id."""
+    url = (f"{BASE}/me/mailFolders/{folder}/messages"
            f"?$select={SELECT}&$top={top}&$orderby=receivedDateTime desc")
     out = []
     while url and len(out) < top * 3:
         r = requests.get(url, headers=_headers(token), timeout=TIMEOUT)
         if r.status_code != 200:
-            raise GraphError(f"list_junk failed: {r.status_code} {r.text[:200]}")
+            raise GraphError(f"list_folder failed: {r.status_code} {r.text[:200]}")
         data = r.json()
         out.extend(_normalize(m) for m in data.get("value", []))
         url = data.get("@odata.nextLink")
         if len(out) >= top:
             break
+    return out
+
+
+def list_junk(token, top=100):
+    return list_folder_messages(token, "junkemail", top)
+
+
+def list_folders(token):
+    """List mail folders (top-level + one level of children) for folder pickers."""
+    def _fetch(url):
+        acc = []
+        while url:
+            r = requests.get(url, headers=_headers(token), timeout=TIMEOUT)
+            if r.status_code != 200:
+                raise GraphError(f"list_folders failed: {r.status_code} {r.text[:200]}")
+            d = r.json()
+            acc.extend(d.get("value", []))
+            url = d.get("@odata.nextLink")
+        return acc
+
+    out = []
+    top = _fetch(f"{BASE}/me/mailFolders?$top=100"
+                 f"&$select=id,displayName,wellKnownName,totalItemCount,childFolderCount")
+    for f in top:
+        out.append({"id": f["id"], "name": f.get("displayName"),
+                    "well_known": f.get("wellKnownName"),
+                    "total": f.get("totalItemCount", 0), "depth": 0})
+        if f.get("childFolderCount"):
+            try:
+                kids = _fetch(f"{BASE}/me/mailFolders/{f['id']}/childFolders"
+                              f"?$top=100&$select=id,displayName,wellKnownName,totalItemCount")
+                for k in kids:
+                    out.append({"id": k["id"], "name": k.get("displayName"),
+                                "well_known": k.get("wellKnownName"),
+                                "total": k.get("totalItemCount", 0), "depth": 1})
+            except Exception:
+                pass
     return out
 
 

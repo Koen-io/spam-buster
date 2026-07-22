@@ -167,6 +167,51 @@ async function loadReports() {
       <div class="sub">${esc(e.sender || "")} · ${ago(e.ts)}</div></div>
       <span class="pill ${e.label === "spam" ? "spam":"ham"}">${labelFor(e.kind)}</span></div>`).join("")
     : `<div class="muted">No activity yet.</div>`;
+  loadDigest(); loadTrends();
+}
+async function loadDigest() {
+  const d = await api("/api/digest");
+  const item = (n,l) => `<div class="digest-item"><div class="dn">${n}</div><div class="dl">${l}</div></div>`;
+  $("digest").innerHTML = `<div class="digest-grid">
+    ${item(d.spam_removed,"removed")}${item(d.phishing,"phishing")}${item(d.spoofing,"spoofed")}
+    ${item(d.trackers,"trackers")}${item(d.learned,"learned")}${item(d.restored,"restored")}
+  </div><div class="muted small" style="margin-top:8px">Last 7 days${d.restored?` · ${d.restored} correction${d.restored>1?'s':''}`:` · no mistakes`}</div>`;
+}
+async function loadTrends() {
+  const t = await api("/api/trends"); const days = t.daily || [];
+  const max = Math.max(1, ...days.map(x => x.n));
+  const w = 300, h = 60, gap = 3, bw = (w - (days.length-1)*gap) / Math.max(1,days.length);
+  const bars = days.map((x,i) => { const bh = x.n ? Math.max(3, x.n/max*h) : 2;
+    return `<rect x="${(i*(bw+gap)).toFixed(1)}" y="${(h-bh).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="2" fill="var(--accent)" opacity="${x.n?0.9:0.2}"></rect>`; }).join("");
+  const total = days.reduce((s,x)=>s+x.n,0);
+  $("trends").innerHTML = `<svg viewBox="0 0 ${w} ${h}" width="100%" height="72" preserveAspectRatio="none">${bars}</svg>
+    <div class="muted small" style="margin-top:6px">${total} spam caught in the last 14 days</div>`;
+}
+async function emptyQuarantine() {
+  const r = await post("/api/quarantine/empty");
+  toast(`Cleared ${r.emptied||0} from the list`); loadQuarantine(); refresh();
+}
+
+// ---------------- welcome wizard (first run)
+let WIZARD_SHOWN = false;
+function maybeWizard() {
+  if (!WIZARD_SHOWN && STATE && STATE.accounts.length === 0) {
+    WIZARD_SHOWN = true;
+    openModal(`<div class="upd-center" style="padding-top:0">
+        <div style="font-size:44px;margin-bottom:6px">🛡️</div>
+        <div class="upd-title">Welcome to Spam Buster</div>
+        <div class="muted">Guard your inbox in two quick steps.</div>
+      </div>
+      <ol class="muted" style="line-height:1.9;margin:18px 4px">
+        <li><b>Add</b> your Hotmail / Outlook.com account(s).</li>
+        <li><b>Connect</b> each with a short one-time code — no password stored.</li>
+      </ol>
+      <p class="muted small">Spam Buster starts in <b>Observe</b> mode and deletes nothing until you say so. Everything runs locally on this Mac.</p>
+      <div class="modal-actions">
+        <button class="btn ghost" onclick="closeModal()">Later</button>
+        <button class="btn primary" onclick="closeModal();showTab('settings')">Add my account →</button>
+      </div>`);
+  }
 }
 function labelFor(k) { return ({deleted_unread:"you deleted", auto_deleted:"auto-deleted", rescued:"rescued", marked_not_spam:"not spam"})[k] || k; }
 
@@ -243,14 +288,66 @@ function fillSettings() {
   renderSettingsAccounts();
 }
 function renderSettingsAccounts() {
-  $("set-accounts").innerHTML = STATE.accounts.length ? STATE.accounts.map(a => `
-    <div class="row"><div class="main"><div>${esc(a.email)}</div>
-      <div class="sub">${a.connected ? "connected" : "not connected"}</div></div>
-      <div>${a.connected
-          ? `<button class="btn tiny ghost" onclick="signout('${a.id}')">Sign out</button>`
-          : `<button class="btn tiny primary" onclick="connect('${a.id}')">Connect</button>`}
-        <button class="btn tiny danger" onclick="removeAccount('${a.id}')">Remove</button></div></div>`).join("")
-    : `<div class="muted">No accounts yet.</div>`;
+  if (!STATE.accounts.length) { $("set-accounts").innerHTML = `<div class="muted">No accounts yet.</div>`; return; }
+  const modes = ["default","observe","suggest","auto"];
+  $("set-accounts").innerHTML = STATE.accounts.map(a => {
+    const cur = a.mode || "default";
+    const chips = modes.map(m => `<button class="chip ${cur===m?'active':''}" onclick="setAcctMode('${a.id}','${m}')">${m==='default'?'Default':m[0].toUpperCase()+m.slice(1)}</button>`).join("");
+    const fc = (a.folders||[]).length;
+    return `<div class="acct">
+      <div class="row" style="border-bottom:none;padding-bottom:4px">
+        <div class="main"><div>${esc(a.email)}</div><div class="sub">${a.connected?'connected':'not connected'}</div></div>
+        <div>${a.connected?`<button class="btn tiny ghost" onclick="signout('${a.id}')">Sign out</button>`:`<button class="btn tiny primary" onclick="connect('${a.id}')">Connect</button>`}
+          <button class="btn tiny danger" onclick="removeAccount('${a.id}')">Remove</button></div>
+      </div>
+      ${a.connected?`<div class="acct-ctl">
+        <span class="ctl-label">Mode</span><div class="mode-quick">${chips}</div></div>
+      <div class="acct-ctl">
+        <span class="ctl-label">Folders</span>
+        <button class="btn tiny" onclick="openFolders('${a.id}')">Monitoring ${fc} folder${fc!==1?'s':''} — edit</button></div>`:''}
+    </div>`;
+  }).join("");
+}
+async function setAcctMode(id, mode) {
+  await post("/api/account/set_mode", {id, mode: mode==="default" ? "" : mode});
+  toast("Account mode updated"); await refresh(); renderSettingsAccounts();
+}
+async function openFolders(id) {
+  const r = await api("/api/account/folders?id=" + encodeURIComponent(id));
+  if (!r.ok) { toast(r.error || "Couldn’t load folders"); return; }
+  const mon = new Set(r.monitored);
+  const rows = r.folders.map(f => {
+    const name = f.name || f.well_known || "folder";
+    const checked = mon.has(f.id) || (f.well_known === "junkemail" && mon.has("junkemail"));
+    return `<label class="folder-item">
+      <input type="checkbox" value="${f.id}" data-name="${esc(name)}" ${checked?'checked':''}>
+      <span>${f.depth?'&nbsp;&nbsp;↳ ':''}${esc(name)}</span>
+      <span class="muted small">${f.total||0}</span></label>`;
+  }).join("");
+  openModal(`<h2 style="margin-top:0">Folders to monitor</h2>
+    <p class="muted small">Choose which folders Spam Buster watches for spam in this mailbox. Junk is the usual choice.</p>
+    <div class="folder-list">${rows}</div>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn primary" onclick="saveFolders('${id}')">Save</button></div>`);
+}
+async function saveFolders(id) {
+  const boxes = [...document.querySelectorAll('.folder-list input:checked')];
+  const folders = boxes.map(b => ({id: b.value, name: b.getAttribute('data-name')}));
+  const r = await post("/api/account/set_folders", {id, folders});
+  toast(r.ok ? "Folders updated" : "Failed"); closeModal(); await refresh(); renderSettingsAccounts();
+}
+
+// backup / restore
+function exportBrain() { window.location.href = "/api/export"; toast("Exporting your brain…"); }
+function importBrain(input) {
+  const f = input.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = async () => {
+    try { const data = JSON.parse(rd.result); const r = await post("/api/import", data);
+      toast(`Imported ${r.added.reputation} rules · ${r.added.lists} list items`); refresh(); }
+    catch (e) { toast("That file isn’t a valid Spam Buster backup"); }
+  };
+  rd.readAsText(f); input.value = "";
 }
 async function addAccount() {
   const email = $("new-account").value.trim();
@@ -312,6 +409,7 @@ function closeModal() { $("modal").classList.add("hidden"); clearInterval(connec
 // ---------------- boot
 async function boot() {
   await refresh();
+  maybeWizard();
   if (location.hash === "#settings") showTab("settings");
   if (location.hash === "#update") setTimeout(openUpdateFlow, 400);
   setInterval(() => { if (CURRENT_TAB === "overview") refresh(); }, 8000);

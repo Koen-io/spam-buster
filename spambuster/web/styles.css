@@ -226,6 +226,30 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
   font-size: 14px; opacity: 0.55; padding: 0; line-height: 1; }
 .tag button:hover { opacity: 1; }
 
+/* ---------- per-account controls ---------- */
+.acct { padding: 12px 0; border-bottom: 1px solid var(--border-soft); }
+.acct:last-child { border-bottom: none; }
+.acct-ctl { display: flex; align-items: center; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+.ctl-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--muted); font-weight: 600; width: 66px; flex-shrink: 0; }
+.acct .chip { padding: 5px 12px; font-size: 12px; }
+
+/* ---------- folder picker ---------- */
+.folder-list { max-height: 320px; overflow: auto; margin: 12px 0;
+  border: 1px solid var(--border-soft); border-radius: 10px; }
+.folder-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+  border-bottom: 1px solid var(--border-soft); cursor: pointer; font-size: 13.5px; }
+.folder-item:last-child { border-bottom: none; }
+.folder-item span:nth-of-type(1) { flex: 1; }
+.folder-item input { accent-color: var(--accent); width: 16px; height: 16px; }
+
+/* ---------- digest ---------- */
+.digest-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+.digest-item { text-align: center; padding: 8px 4px; background: var(--card2);
+  border: 1px solid var(--border-soft); border-radius: 10px; }
+.digest-item .dn { font-size: 22px; font-weight: 650; color: var(--accent); }
+.digest-item .dl { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; margin-top: 2px; }
+
 .logs { background: #1b2330; color: #cfe3ff; padding: 14px; border-radius: 10px;
   font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px;
   max-height: 340px; overflow: auto; white-space: pre-wrap; }

@@ -89,6 +89,16 @@
 
   <!-- REPORTS -->
   <section id="tab-reports" class="tab-panel hidden">
+    <div class="grid">
+      <div class="card">
+        <div class="card-label">This week</div>
+        <div id="digest"></div>
+      </div>
+      <div class="card">
+        <div class="card-label">Spam caught · last 14 days</div>
+        <div id="trends"></div>
+      </div>
+    </div>
     <div class="card">
       <div class="card-label">Rules Spam Buster follows</div>
       <div class="muted small">Learned from mail you deleted unread. It only auto-deletes when a sender or domain is a consistent, confident match — or when you’ve blocklisted it.</div>
@@ -138,8 +148,11 @@
   <!-- QUARANTINE -->
   <section id="tab-quarantine" class="tab-panel hidden">
     <div class="card">
-      <div class="card-label">Quarantined (auto-deleted, recoverable)</div>
-      <div class="muted small">These were moved to Deleted Items. Restore puts them back in your Inbox and teaches Spam Buster it was “not spam”.</div>
+      <div class="card-label" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Quarantined (auto-deleted, recoverable)</span>
+        <button class="btn tiny ghost" onclick="emptyQuarantine()">Empty quarantine</button>
+      </div>
+      <div class="muted small">These were moved to Deleted Items. Restore puts them back in your Inbox and teaches Spam Buster it was “not spam”. Items older than 30 days clear automatically.</div>
       <div id="q-active" style="margin-top:14px"></div>
     </div>
     <div class="card">
@@ -211,6 +224,16 @@
       <div class="field-row">
         <input id="new-allow" class="input" placeholder="friend@example.com or example.com">
         <button class="btn primary" onclick="addList('allow_sender','new-allow')">Add to Friends</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Backup & restore</div>
+      <div class="muted small">Export everything Spam Buster has learned (rules, blocklist, friends) so a new Mac starts smart. Import merges a backup into this Mac.</div>
+      <div class="field-row">
+        <button class="btn" onclick="exportBrain()">⤓ Export brain</button>
+        <button class="btn" onclick="document.getElementById('import-file').click()">⤒ Import brain</button>
+        <input id="import-file" type="file" accept="application/json" style="display:none" onchange="importBrain(this)">
       </div>
     </div>
 

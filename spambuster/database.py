@@ -487,3 +487,102 @@ def recent_events(limit=100):
             "SELECT * FROM events ORDER BY ts DESC LIMIT ?", (limit,)
         ).fetchall()
         return [dict(r) for r in rows]
+
+
+# ---------------------------------------------------------------- trends / digest
+
+def daily_counts(days=14):
+    """Spam removed per day for the last N days (auto-deleted + deleted-unread)."""
+    with _lock:
+        rows = _c().execute(
+            """SELECT date(ts,'unixepoch','localtime') AS d, COUNT(*) AS n
+               FROM events WHERE label='spam'
+                 AND ts >= strftime('%s','now','localtime',? )
+               GROUP BY d""",
+            (f"-{days} days",)).fetchall()
+        by = {r["d"]: r["n"] for r in rows}
+    # Build a continuous series (fill gaps with 0) using SQLite date math.
+    with _lock:
+        days_rows = _c().execute(
+            "SELECT date('now','localtime', '-'||v||' days') AS d "
+            "FROM (WITH RECURSIVE c(v) AS (SELECT 0 UNION ALL SELECT v+1 FROM c WHERE v < ?) "
+            "SELECT v FROM c) ORDER BY d", (days - 1,)).fetchall()
+    return [{"date": r["d"], "n": by.get(r["d"], 0)} for r in days_rows]
+
+
+def today_blocked():
+    with _lock:
+        r = _c().execute(
+            "SELECT COUNT(*) FROM events WHERE kind='auto_deleted' "
+            "AND ts >= strftime('%s','now','localtime','start of day')").fetchone()
+        return r[0] if r and r[0] else 0
+
+
+def digest(days=7):
+    with _lock:
+        c = _c()
+        def sc(q):
+            r = c.execute(q).fetchone(); return r[0] if r and r[0] is not None else 0
+        since = f"AND ts >= strftime('%s','now','localtime','-{days} days')"
+        return {
+            "days": days,
+            "spam_removed": sc(f"SELECT COUNT(*) FROM events WHERE kind='auto_deleted' {since}"),
+            "learned": sc(f"SELECT COUNT(*) FROM events WHERE kind='deleted_unread' {since}"),
+            "restored": sc(f"SELECT COUNT(*) FROM quarantine WHERE status='restored' "
+                           f"AND deleted_at >= strftime('%s','now','localtime','-{days} days')"),
+            "phishing": sc(f"SELECT COUNT(*) FROM analysis WHERE is_phishing=1 "
+                           f"AND analyzed_at >= strftime('%s','now','localtime','-{days} days')"),
+            "spoofing": sc(f"SELECT COUNT(*) FROM analysis WHERE spoofing=1 "
+                           f"AND analyzed_at >= strftime('%s','now','localtime','-{days} days')"),
+            "trackers": sc(f"SELECT COALESCE(SUM(trackers),0) FROM analysis "
+                           f"WHERE analyzed_at >= strftime('%s','now','localtime','-{days} days')"),
+        }
+
+
+# ---------------------------------------------------------------- quarantine mgmt
+
+def purge_quarantine_older(retention_days):
+    cutoff = time.time() - retention_days * 86400
+    with _lock:
+        cur = _c().execute(
+            "UPDATE quarantine SET status='purged' "
+            "WHERE status='quarantined' AND deleted_at < ?", (cutoff,))
+        _c().commit()
+        return cur.rowcount
+
+
+def empty_quarantine():
+    with _lock:
+        cur = _c().execute(
+            "UPDATE quarantine SET status='purged' WHERE status='quarantined'")
+        _c().commit()
+        return cur.rowcount
+
+
+# ---------------------------------------------------------------- export / import
+
+def export_data():
+    with _lock:
+        c = _c()
+        rep = [dict(r) for r in c.execute("SELECT * FROM reputation").fetchall()]
+        lists = [dict(r) for r in c.execute("SELECT * FROM lists").fetchall()]
+    return {"version": 1, "reputation": rep, "lists": lists}
+
+
+def import_data(payload):
+    added = {"reputation": 0, "lists": 0}
+    for r in (payload.get("reputation") or []):
+        try:
+            bump_reputation(r["key_type"], r["key"],
+                            spam=float(r.get("spam_count", 0)),
+                            ham=float(r.get("ham_count", 0)))
+            added["reputation"] += 1
+        except Exception:
+            pass
+    for l in (payload.get("lists") or []):
+        try:
+            list_add(l["kind"], l["value"], note=l.get("note"))
+            added["lists"] += 1
+        except Exception:
+            pass
+    return added

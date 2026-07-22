@@ -36,6 +36,8 @@ def _account_view(cfg):
             "id": a["id"], "email": a["email"],
             "enabled": a.get("enabled", True),
             "connected": bool(cid) and auth.has_token(cid, a["id"]),
+            "mode": a.get("mode"),   # None = follow global default
+            "folders": a.get("folders") or [{"id": "junkemail", "name": "Junk"}],
         })
     return out
 
@@ -140,6 +142,47 @@ def create_app():
             if a["id"] == aid:
                 a["enabled"] = enabled
         config.save(cfg)
+        return jsonify({"ok": True})
+
+    @app.route("/api/account/set_mode", methods=["POST"])
+    def api_account_set_mode():
+        d = request.get_json(force=True) or {}
+        aid = d.get("id"); mode = d.get("mode")
+        cfg = config.load()
+        for a in cfg["accounts"]:
+            if a["id"] == aid:
+                if mode in ("observe", "suggest", "auto"):
+                    a["mode"] = mode
+                else:
+                    a.pop("mode", None)   # revert to global default
+        config.save(cfg); engine.wake()
+        return jsonify({"ok": True})
+
+    @app.route("/api/account/folders")
+    def api_account_folders():
+        aid = request.args.get("id")
+        folders, err = engine.list_account_folders(aid)
+        if err:
+            return jsonify({"ok": False, "error": err}), 400
+        cfg = config.load()
+        monitored = []
+        for a in cfg["accounts"]:
+            if a["id"] == aid:
+                monitored = [f["id"] for f in (a.get("folders")
+                             or [{"id": "junkemail", "name": "Junk"}])]
+        return jsonify({"ok": True, "folders": folders, "monitored": monitored})
+
+    @app.route("/api/account/set_folders", methods=["POST"])
+    def api_account_set_folders():
+        d = request.get_json(force=True) or {}
+        aid = d.get("id"); folders = d.get("folders") or []
+        if not folders:
+            folders = [{"id": "junkemail", "name": "Junk"}]
+        cfg = config.load()
+        for a in cfg["accounts"]:
+            if a["id"] == aid:
+                a["folders"] = folders
+        config.save(cfg); engine.wake()
         return jsonify({"ok": True})
 
     @app.route("/api/account/connect", methods=["POST"])
@@ -255,6 +298,35 @@ def create_app():
         data = request.get_json(force=True) or {}
         db.list_remove(data.get("kind"), data.get("value"))
         return jsonify({"ok": True})
+
+    @app.route("/api/digest")
+    def api_digest():
+        return jsonify(db.digest(7))
+
+    @app.route("/api/trends")
+    def api_trends():
+        return jsonify({"daily": db.daily_counts(14)})
+
+    @app.route("/api/export")
+    def api_export():
+        from flask import Response
+        import json as _json
+        data = _json.dumps(db.export_data(), indent=2)
+        return Response(data, mimetype="application/json",
+                        headers={"Content-Disposition":
+                                 "attachment; filename=spam-buster-brain.json"})
+
+    @app.route("/api/import", methods=["POST"])
+    def api_import():
+        payload = request.get_json(force=True) or {}
+        added = db.import_data(payload)
+        engine.wake()
+        return jsonify({"ok": True, "added": added})
+
+    @app.route("/api/quarantine/empty", methods=["POST"])
+    def api_quarantine_empty():
+        n = engine.empty_quarantine()
+        return jsonify({"ok": True, "emptied": n})
 
     @app.route("/api/scan", methods=["POST"])
     def api_scan():

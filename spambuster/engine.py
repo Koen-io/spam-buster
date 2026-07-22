@@ -16,6 +16,18 @@ from . import auth, config, database as db, detector, graph, logutil, protection
 
 log = logutil.get_logger("engine")
 
+# Set by the menu-bar app to surface native notifications.
+ALERT_CALLBACK = None
+
+
+def emit_alert(title, message):
+    cb = ALERT_CALLBACK
+    if cb:
+        try:
+            cb(title, message)
+        except Exception:
+            pass
+
 
 class Engine:
     def __init__(self):
@@ -82,6 +94,11 @@ class Engine:
                 if not acct.get("enabled", True):
                     continue
                 results[acct["id"]] = self._scan_account(cfg, client_id, acct)
+            # Housekeeping: retire old quarantine entries from the recovery list.
+            try:
+                db.purge_quarantine_older(cfg.get("quarantine_retention_days", 30))
+            except Exception:
+                pass
         finally:
             self.status["scanning"] = False
             self.status["last_scan"] = time.time()
@@ -98,12 +115,24 @@ class Engine:
             return info
         info["connected"] = True
 
-        try:
-            current = graph.list_junk(token, top=100)
-        except Exception as e:  # noqa
-            info["error"] = str(e)
-            log.warning("list_junk failed for %s: %s", acct_id, e)
-            return info
+        folders = acct.get("folders") or [{"id": "junkemail", "name": "Junk"}]
+        current = []
+        for f in folders:
+            fid = f.get("id") or "junkemail"
+            try:
+                current.extend(graph.list_folder_messages(token, fid, top=100))
+            except Exception as e:  # noqa
+                info["error"] = str(e)
+                log.warning("list folder %s failed for %s: %s", fid, acct_id, e)
+        # de-duplicate (a message lives in one folder, but be safe)
+        seen_ids_now = set()
+        deduped = []
+        for m in current:
+            if m["graph_id"] in seen_ids_now:
+                continue
+            seen_ids_now.add(m["graph_id"])
+            deduped.append(m)
+        current = deduped
 
         info["junk_count"] = len(current)
         current_by_id = {m["graph_id"]: m for m in current}
@@ -123,8 +152,8 @@ class Engine:
                 log.info("learned spam from deleted-unread: %s | %s",
                          prev.get("sender"), (prev.get("subject") or "")[:60])
 
-        # 2) Handle messages currently in Junk.
-        mode = cfg["detection"].get("mode", "observe")
+        # 2) Handle messages currently in the monitored folders.
+        mode = acct.get("mode") or cfg["detection"].get("mode", "observe")
         threshold = cfg["detection"].get("confidence_threshold", 95)
         min_obs = cfg["detection"].get("min_observations", 3)
         suggestions = []
@@ -222,6 +251,9 @@ class Engine:
                      subject=m["subject"], confidence=conf)
         log.info("AUTO-DELETED (%d%%): %s | %s", conf, m["sender"],
                  (m["subject"] or "")[:60])
+        is_phish = any("phish" in r.lower() or "spoof" in r.lower() for r in (reasons or []))
+        emit_alert("Threat removed" if is_phish else "Spam removed",
+                   f"{m.get('sender','')} — {(m.get('subject') or '')[:50]}")
         return True
 
     # -------------------------------------------------- user actions
@@ -251,10 +283,24 @@ class Engine:
         """Alias kept for clarity; same as restore."""
         return self.restore(qid)
 
-    # -------------------------------------------------- newsletters
+    # -------------------------------------------------- accounts / folders
     def _token_for(self, account_id):
         cfg = config.load()
         return auth.get_token(cfg.get("azure_client_id"), account_id)
+
+    def list_account_folders(self, account_id):
+        token = self._token_for(account_id)
+        if not token:
+            return None, "account not signed in"
+        try:
+            return graph.list_folders(token), None
+        except Exception as e:  # noqa
+            return None, str(e)
+
+    def empty_quarantine(self):
+        return db.empty_quarantine()
+
+    # -------------------------------------------------- newsletters
 
     def delete_newsletter(self, account_id, graph_id, reason="Newsletter — removed"):
         token = self._token_for(account_id)
