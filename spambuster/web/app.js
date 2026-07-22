@@ -220,9 +220,17 @@ async function loadFlagged() {
       <div class="sub" style="white-space:normal;max-width:none">${esc(x.sender || "")}${x.account?` · ${esc(x.account)}`:""}${(x.reasons||[]).length?` · ${esc((x.reasons||[])[0])}`:""}</div></div>
     <div style="display:flex;gap:6px;flex-shrink:0">
       <button class="btn tiny ghost" data-sender="${esc(x.sender||'')}" data-domain="${esc(x.sender_domain||'')}" data-subject="${esc(x.subject||'')}" data-account="${esc(x.account_id||'')}" onclick="notSpam(this)">${t("com.notspam")}</button>
+      <button class="btn tiny" data-sender="${esc(x.sender||'')}" data-domain="${esc(x.sender_domain||'')}" data-subject="${esc(x.subject||'')}" data-account="${esc(x.account_id||'')}" onclick="addFriend(this)">${t("com.friend")}</button>
       <button class="btn tiny danger" data-account-id="${esc(x.account_id||'')}" data-graph-id="${esc(x.graph_id||'')}" onclick="flagDelete(this)">${t("com.delete")}</button>
     </div></div>`).join("")
     : `<div class="muted">${t("rep.flaggednone")}</div>`;
+}
+async function addFriend(btn) {
+  await post("/api/friend/add", {sender: btn.dataset.sender || "", sender_domain: btn.dataset.domain || "",
+    subject: btn.dataset.subject || "", account_id: btn.dataset.account || ""});
+  toast(t("toast.friend"));
+  const row = btn.closest(".row"); if (row) row.style.display = "none";
+  refresh();
 }
 async function flagDelete(btn) {
   await post("/api/message/delete", {account_id: btn.dataset.accountId, graph_id: btn.dataset.graphId});

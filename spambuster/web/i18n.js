@@ -94,6 +94,7 @@ const I18N = {
     "act.deleted": "you deleted", "act.autodeleted": "auto-deleted", "act.rescued": "rescued", "act.notspam": "not spam",
     "com.spoofed": "spoofed", "com.autodelete": "auto-delete",
     "com.unsubscribe": "Unsubscribe", "com.delete": "Delete", "com.notspam": "No Spam",
+    "com.friend": "＋ Friends", "toast.friend": "Added to Friends ✓",
     "toast.notspam": "Marked “No Spam” — learning ✓",
 
     "warn.title": "⚠️ Can’t scan {0} mailbox{1}",
@@ -203,6 +204,7 @@ const I18N = {
     "act.deleted": "jij verwijderde", "act.autodeleted": "auto-verwijderd", "act.rescued": "gered", "act.notspam": "geen spam",
     "com.spoofed": "vervalst", "com.autodelete": "auto-verwijderen",
     "com.unsubscribe": "Afmelden", "com.delete": "Verwijderen", "com.notspam": "Geen Spam",
+    "com.friend": "＋ Vrienden", "toast.friend": "Toegevoegd aan Vrienden ✓",
     "toast.notspam": "Gemarkeerd als “Geen Spam” — leren ✓",
 
     "warn.title": "⚠️ Kan {0} mailbox{1} niet scannen",

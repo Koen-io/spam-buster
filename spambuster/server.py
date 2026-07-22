@@ -397,6 +397,21 @@ def create_app():
         ok, msg = engine.delete_message(d.get("account_id"), d.get("graph_id"))
         return jsonify({"ok": ok, "message": msg})
 
+    @app.route("/api/friend/add", methods=["POST"])
+    def api_friend_add():
+        d = request.get_json(force=True) or {}
+        sender = (d.get("sender") or "").strip().lower()
+        domain = (d.get("sender_domain")
+                  or (sender.split("@", 1)[1] if "@" in sender else "")).strip().lower()
+        if sender:
+            db.list_add("allow_sender", sender)
+        # also teach ham so similar mail relaxes, and re-scan
+        detector.mark_not_spam(d.get("account_id"),
+                               {"sender": sender, "sender_domain": domain,
+                                "sender_name": "", "subject": d.get("subject", "")})
+        engine.wake()
+        return jsonify({"ok": True, "added": sender})
+
     @app.route("/api/notspam", methods=["POST"])
     def api_notspam():
         d = request.get_json(force=True) or {}
