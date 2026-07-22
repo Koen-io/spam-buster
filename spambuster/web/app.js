@@ -82,7 +82,10 @@ function render() {
   $("ov-suggestions").innerHTML = sug.length ? sug.map(x => `
     <div class="row"><div class="main"><div>${esc(x.subject || "(no subject)")}</div>
       <div class="sub">${esc(x.sender || "")}</div></div>
-      <span class="pill spam">${x.confidence}%</span></div>`).join("")
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+        <span class="pill spam">${x.confidence}%</span>
+        <button class="btn tiny ghost" data-sender="${esc(x.sender||'')}" data-subject="${esc(x.subject||'')}" onclick="notSpam(this)">${t("com.notspam")}</button>
+      </div></div>`).join("")
     : `<div class="muted">${st.spam_examples ? t("sug.nothing") : t("sug.learning")}</div>`;
 
   $("ov-accounts").innerHTML = s.accounts.length ? s.accounts.map(a => `
@@ -162,6 +165,15 @@ async function applyUpdate() {
   } else {
     toast(r.message || "Update failed"); closeModal();
   }
+}
+
+async function notSpam(btn) {
+  const sender = btn.dataset.sender || "", subject = btn.dataset.subject || "";
+  const domain = btn.dataset.domain || "", account = btn.dataset.account || "";
+  await post("/api/notspam", {sender, subject, sender_domain: domain, account_id: account});
+  toast(t("toast.notspam"));
+  const row = btn.closest(".row"); if (row) row.style.display = "none";
+  refresh();
 }
 
 // ---------------- reports
@@ -256,16 +268,18 @@ async function loadProtection() {
     [t("prot.phishingcaught"), s.phishing], [t("prot.trackersseen"), s.trackers], [t("prot.newsletters"), s.newsletters_current],
   ].map(([l,n]) => `<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
 
+  const nsBtn = (x) => `<button class="btn tiny ghost" data-sender="${esc(x.sender||'')}" data-domain="${esc(x.sender_domain||'')}" data-subject="${esc(x.subject||'')}" data-account="${esc(x.account_id||'')}" onclick="notSpam(this)">${t("com.notspam")}</button>`;
   $("prot-phishing").innerHTML = p.phishing.length ? p.phishing.map(x => `
     <div class="row"><div class="main"><div>${esc(x.subject || "(no subject)")}
       <span class="pill spam">${x.phishing_score}%</span></div>
-      <div class="sub">${esc(x.sender || "")} · ${esc((x.phishing_reasons||[])[0] || "")}</div></div></div>`).join("")
+      <div class="sub">${esc(x.sender || "")} · ${esc((x.phishing_reasons||[])[0] || "")}</div></div>
+      ${nsBtn(x)}</div>`).join("")
     : `<div class="muted">${t("prot.none.phish")}</div>`;
 
   $("prot-spoofing").innerHTML = p.spoofing.length ? p.spoofing.map(x => `
     <div class="row"><div class="main"><div>${esc(x.subject || "(no subject)")}</div>
       <div class="sub">${esc(x.sender || "")} · spf:${esc(x.spf)} dkim:${esc(x.dkim)} dmarc:${esc(x.dmarc)}</div></div>
-      <span class="pill warn">${t("com.spoofed")}</span></div>`).join("")
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0"><span class="pill warn">${t("com.spoofed")}</span>${nsBtn(x)}</div></div>`).join("")
     : `<div class="muted">${t("prot.none.spoof")}</div>`;
 
   $("prot-newsletters").innerHTML = p.newsletters.length ? p.newsletters.map(x => `

@@ -378,6 +378,18 @@ def create_app():
         threatfeeds.update_async()
         return jsonify({"ok": True})
 
+    @app.route("/api/notspam", methods=["POST"])
+    def api_notspam():
+        d = request.get_json(force=True) or {}
+        sender = (d.get("sender") or "").strip().lower()
+        domain = (d.get("sender_domain")
+                  or (sender.split("@", 1)[1] if "@" in sender else "")).strip().lower()
+        msg = {"sender": sender, "sender_domain": domain,
+               "sender_name": d.get("sender_name", ""), "subject": d.get("subject", "")}
+        detector.mark_not_spam(d.get("account_id"), msg)
+        engine.wake()
+        return jsonify({"ok": True})
+
     @app.route("/api/scan", methods=["POST"])
     def api_scan():
         engine.wake()

@@ -229,7 +229,7 @@ class Engine:
                 analysis = self._protect(token, acct_id, m, is_new)
                 if analysis:
                     prob, reasons, decisive = self._apply_protection(
-                        cfg, analysis, prob, reasons, decisive)
+                        cfg, analysis, prob, reasons, decisive, m)
 
             conf = round(prob * 100)
 
@@ -285,8 +285,12 @@ class Engine:
                 return None
         return db.get_analysis(acct_id, gid)
 
-    def _apply_protection(self, cfg, a, prob, reasons, decisive):
+    def _apply_protection(self, cfg, a, prob, reasons, decisive, m=None):
         """Fold auth/phishing verdicts into the spam decision."""
+        # Trusted (Friends) senders are never escalated by protection signals.
+        if m and (db.list_has("allow_sender", m.get("sender"))
+                  or db.list_has("allow_sender", m.get("sender_domain"))):
+            return prob, reasons, decisive
         det = cfg["detection"]
         extra = []
         if det.get("auth_as_spam", True) and a.get("spoofing"):

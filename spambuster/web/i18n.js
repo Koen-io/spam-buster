@@ -90,7 +90,8 @@ const I18N = {
     "com.noneyet": "None yet.", "set.lastcheck": "Last update check: {0}",
     "act.deleted": "you deleted", "act.autodeleted": "auto-deleted", "act.rescued": "rescued", "act.notspam": "not spam",
     "com.spoofed": "spoofed", "com.autodelete": "auto-delete",
-    "com.unsubscribe": "Unsubscribe", "com.delete": "Delete",
+    "com.unsubscribe": "Unsubscribe", "com.delete": "Delete", "com.notspam": "No Spam",
+    "toast.notspam": "Marked “No Spam” — learning ✓",
 
     "warn.title": "⚠️ Can’t scan {0} mailbox{1}",
     "warn.sub": "{0}. Reconnect the account to resume protection.",
@@ -195,7 +196,8 @@ const I18N = {
     "com.noneyet": "Nog niets.", "set.lastcheck": "Laatste updatecheck: {0}",
     "act.deleted": "jij verwijderde", "act.autodeleted": "auto-verwijderd", "act.rescued": "gered", "act.notspam": "geen spam",
     "com.spoofed": "vervalst", "com.autodelete": "auto-verwijderen",
-    "com.unsubscribe": "Afmelden", "com.delete": "Verwijderen",
+    "com.unsubscribe": "Afmelden", "com.delete": "Verwijderen", "com.notspam": "Geen Spam",
+    "toast.notspam": "Gemarkeerd als “Geen Spam” — leren ✓",
 
     "warn.title": "⚠️ Kan {0} mailbox{1} niet scannen",
     "warn.sub": "{0}. Verbind het account opnieuw om bescherming te hervatten.",
