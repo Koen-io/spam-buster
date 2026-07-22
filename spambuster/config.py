@@ -51,6 +51,8 @@ DEFAULT_CONFIG = {
         "port": 7676,
     },
 
+    "language": "en",   # en | nl
+
     "first_run": True,
 }
 

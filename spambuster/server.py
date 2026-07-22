@@ -72,6 +72,7 @@ def create_app():
         return jsonify({
             "suggestions": suggestions[:8],
             "version": __version__,
+            "language": cfg.get("language", "en"),
             "first_run": cfg.get("first_run", True),
             "configured_client": bool(cfg.get("azure_client_id")),
             "detection": cfg["detection"],
@@ -104,6 +105,8 @@ def create_app():
                                   if k in patch["updates"]}
         if "first_run" in patch:
             allowed["first_run"] = patch["first_run"]
+        if "language" in patch and patch["language"] in ("en", "nl"):
+            allowed["language"] = patch["language"]
         cfg = config.update(allowed)
         engine.wake()
         return jsonify({"ok": True, "detection": cfg["detection"]})
@@ -222,11 +225,14 @@ def create_app():
             for s in (db.get_meta(f"suggestions:{a['id']}", []) or []):
                 suggestions.append({**s, "account": a["email"]})
         suggestions.sort(key=lambda x: x.get("confidence", 0), reverse=True)
+        from . import model
         return jsonify({
             "rules": detector.rules_summary(min_observations=min_obs),
             "events": db.recent_events(60),
             "suggestions": suggestions[:50],
             "stats": db.stats(),
+            "model": {"ready": model.is_ready(), "examples": model.examples(),
+                      "min": model.MIN_EXAMPLES},
         })
 
     # ---------------------------------------------------- quarantine

@@ -81,6 +81,11 @@ CREATE TABLE IF NOT EXISTS meta (
     value TEXT
 );
 
+CREATE TABLE IF NOT EXISTS weights (
+    feature TEXT PRIMARY KEY,
+    w REAL
+);
+
 CREATE TABLE IF NOT EXISTS analysis (
     account_id    TEXT NOT NULL,
     graph_id      TEXT NOT NULL,
@@ -152,6 +157,26 @@ def set_meta(key, value):
             "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
             (key, json.dumps(value)),
         )
+        _c().commit()
+
+
+# ---------------------------------------------------------------- model weights
+
+def get_all_weights():
+    with _lock:
+        rows = _c().execute("SELECT feature, w FROM weights").fetchall()
+        return {r["feature"]: r["w"] for r in rows}
+
+
+def save_weights(changed):
+    """changed: dict feature -> weight."""
+    if not changed:
+        return
+    with _lock:
+        _c().executemany(
+            "INSERT INTO weights(feature, w) VALUES(?,?) "
+            "ON CONFLICT(feature) DO UPDATE SET w=excluded.w",
+            list(changed.items()))
         _c().commit()
 
 

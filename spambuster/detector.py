@@ -133,6 +133,18 @@ def score(message):
 
     prob = _sigmoid(log_odds)
 
+    # Once the online logistic-regression model has enough training, use its
+    # calibrated probability (keeps the reputation-based reasons + decisiveness).
+    try:
+        from . import model
+        if model.is_ready():
+            lr_prob = model.predict(message)
+            blended = 0.15 * prob + 0.85 * lr_prob   # mostly LR, a touch of reputation
+            # Never weaken a decisive, consistent reputation rule.
+            prob = max(blended, prob) if decisive else blended
+    except Exception:
+        pass
+
     strongest.sort(key=lambda x: x[0], reverse=True)
     reasons = [r for _, r in strongest[:4]]
     if not reasons:
@@ -164,6 +176,13 @@ def learn(account_id, message, label, source="user", kind=None):
         sender=f["sender"], sender_domain=f["domain"],
         subject=message.get("subject"),
     )
+
+    # Update the online logistic-regression model too.
+    try:
+        from . import model
+        model.train(message, label)
+    except Exception:
+        pass
 
 
 def rules_summary(min_observations=3, limit=40):

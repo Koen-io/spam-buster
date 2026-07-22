@@ -1,0 +1,205 @@
+// Spam Buster — localization (English / Nederlands)
+const I18N = {
+  en: {
+    "nav.scan": "Scan now", "nav.update": "Update", "nav.settings": "Settings",
+    "nav.pause": "Pause", "nav.resume": "Resume",
+    "tab.overview": "Overview", "tab.reports": "Reports", "tab.protection": "Protection",
+    "tab.quarantine": "Quarantine", "tab.settings": "Settings",
+
+    "onboard.title": "Welcome to Spam Buster.",
+    "onboard.sub": "Connect your mail accounts in Settings to start guarding your inbox.",
+    "onboard.cta": "Open setup →",
+
+    "ov.protection": "Protection", "ov.selectmode": "Select operation mode",
+    "ov.accounts": "Accounts", "ov.woulddelete": "Would auto-delete (top matches)",
+    "mode.observe": "Observe", "mode.suggest": "Suggest", "mode.auto": "Auto-delete",
+    "mode.observing": "Observing", "mode.paused": "Paused", "mode.default": "Default",
+
+    "stat.learned": "Spam learned", "stat.autodeleted": "Auto-deleted",
+    "stat.inquarantine": "In quarantine", "stat.knownsenders": "Known senders",
+
+    "rep.thisweek": "This week", "rep.trend": "Spam caught · last 14 days",
+    "rep.rules": "Rules Spam Buster follows",
+    "rep.rulesdesc": "Learned from mail you deleted unread. It only auto-deletes when a sender or domain is a consistent, confident match — or when you’ve blocklisted it.",
+    "rep.words": "Words that signal spam", "rep.safe": "Senders you trust",
+    "rep.activity": "Recent activity",
+    "dig.removed": "removed", "dig.phishing": "phishing", "dig.spoofed": "spoofed",
+    "dig.trackers": "trackers", "dig.learned": "learned", "dig.restored": "restored",
+
+    "prot.authenticated": "Authenticated", "prot.spoofingblocked": "Spoofing blocked",
+    "prot.phishingcaught": "Phishing caught", "prot.trackersseen": "Trackers seen",
+    "prot.newsletters": "Newsletters",
+    "prot.phishing": "Phishing detected",
+    "prot.phishingdesc": "Links analyzed for look-alike domains, hidden destinations and credential-harvest language. Caught in Junk, before you ever click.",
+    "prot.spoofing": "Spoofing blocked (SPF / DKIM / DMARC)",
+    "prot.spoofingdesc": "Senders that failed email authentication — impersonation attempts.",
+    "prot.news": "Newsletters & mass email", "prot.deleteall": "Delete all",
+    "prot.newsdesc": "Bulk mail with a working unsubscribe. Use one-click unsubscribe where supported, or slice them all at once. Tip: for real spam, deleting is safer than unsubscribing (unsubscribing confirms your address is live).",
+
+    "q.title": "Quarantined (auto-deleted, recoverable)", "q.empty": "Empty quarantine",
+    "q.desc": "These were moved to Deleted Items. Restore puts them back in your Inbox and teaches Spam Buster it was “not spam”. Items older than 30 days clear automatically.",
+    "q.restored": "Restored", "q.nothing": "Nothing quarantined. 🎉", "q.none": "None.",
+    "q.undo": "Undo · not spam",
+
+    "set.accounts": "Email accounts", "set.addph": "name@hotmail.com", "set.add": "Add account",
+    "set.detection": "Detection", "set.mode": "Mode",
+    "set.modedesc": "Observe learns only · Suggest lists spam · Auto-delete removes high-confidence spam.",
+    "set.threshold": "Confidence threshold", "set.threshdesc": "Auto-delete only when Spam Buster is at least this sure.",
+    "set.minev": "Minimum evidence", "set.minevunit": "confirmations",
+    "set.minevdesc": "How many times you must delete a sender/domain before it can be auto-deleted.",
+    "set.pollpre": "Check Junk every", "set.pollunit": "seconds",
+    "set.block": "Blocklist — always deleted",
+    "set.blockdesc": "Banish a sender or an entire domain. Anything matching is removed immediately, in any mode.",
+    "set.blockdomainph": "domain, e.g. deals-spam.ru", "set.blockdomain": "Block domain",
+    "set.blocksenderph": "sender, e.g. promo@spam.com", "set.blocksender": "Block sender",
+    "set.friends": "Friends — always kept",
+    "set.friendsdesc": "Trusted senders or domains. Their mail is never flagged or deleted, no matter what.",
+    "set.friendph": "friend@example.com or example.com", "set.addfriend": "Add to Friends",
+    "set.backup": "Backup & restore",
+    "set.backupdesc": "Export everything Spam Buster has learned (rules, blocklist, friends) so a new Mac starts smart. Import merges a backup into this Mac.",
+    "set.export": "⤓ Export brain", "set.import": "⤒ Import brain",
+    "set.language": "Language", "set.diag": "Diagnostics", "set.viewlog": "View log",
+    "set.mon.pre": "Monitoring", "set.mon.folder": "folder", "set.mon.folders": "folders", "set.mon.edit": "edit",
+    "set.signout": "Sign out", "set.connect": "Connect", "set.remove": "Remove",
+    "set.folders": "Folders",
+
+    "st.connected": "connected", "st.notconnected": "not connected", "st.injunk": "in Junk",
+    "st.never": "never", "ago.s": "{0}s ago", "ago.m": "{0}m ago", "ago.h": "{0}h ago",
+    "status.detail": "{0}/{1} connected · last scan {2}",
+    "sug.nothing": "Nothing above the threshold right now.",
+    "sug.learning": "Learning… delete some spam unread to train it.",
+    "prot.none.phish": "No phishing detected. 🛡️", "prot.none.spoof": "No spoofing detected.",
+    "prot.none.news": "No newsletters in your Junk right now.",
+    "model.active": "Smart model active — calibrated on {0} examples",
+    "model.warming": "Smart model warming up — {0}/{1} examples",
+    "folders.title": "Folders to monitor",
+    "folders.desc": "Choose which folders Spam Buster watches for spam in this mailbox. Junk is the usual choice.",
+    "com.cancel": "Cancel", "com.save": "Save",
+    "com.noneyet": "None yet.", "set.lastcheck": "Last update check: {0}",
+    "act.deleted": "you deleted", "act.autodeleted": "auto-deleted", "act.rescued": "rescued", "act.notspam": "not spam",
+    "com.spoofed": "spoofed", "com.autodelete": "auto-delete",
+    "com.unsubscribe": "Unsubscribe", "com.delete": "Delete",
+
+    "warn.title": "⚠️ Can’t scan {0} mailbox{1}",
+    "warn.sub": "{0}. Reconnect the account to resume protection.",
+    "warn.fix": "Fix in Settings →",
+    "warn.expired": "{0} — sign-in expired or disconnected",
+
+    "toast.scanning": "Scanning your Junk folders…", "toast.saved": "Saved",
+    "toast.restored": "Restored to Inbox & marked not spam",
+    "wiz.title": "Welcome to Spam Buster", "wiz.sub": "Guard your inbox in two quick steps.",
+    "wiz.step1": "Add your Hotmail / Outlook.com account(s).",
+    "wiz.step2": "Connect each with a short one-time code — no password stored.",
+    "wiz.note": "Spam Buster starts in Observe mode and deletes nothing until you say so. Everything runs locally on this Mac.",
+    "wiz.later": "Later", "wiz.cta": "Add my account →",
+  },
+  nl: {
+    "nav.scan": "Nu scannen", "nav.update": "Bijwerken", "nav.settings": "Instellingen",
+    "nav.pause": "Pauzeer", "nav.resume": "Hervat",
+    "tab.overview": "Overzicht", "tab.reports": "Rapporten", "tab.protection": "Bescherming",
+    "tab.quarantine": "Quarantaine", "tab.settings": "Instellingen",
+
+    "onboard.title": "Welkom bij Spam Buster.",
+    "onboard.sub": "Verbind je e-mailaccounts in Instellingen om je inbox te beschermen.",
+    "onboard.cta": "Instellen openen →",
+
+    "ov.protection": "Bescherming", "ov.selectmode": "Kies de werkingsmodus",
+    "ov.accounts": "Accounts", "ov.woulddelete": "Zou automatisch verwijderen (beste matches)",
+    "mode.observe": "Observeren", "mode.suggest": "Voorstellen", "mode.auto": "Auto-verwijderen",
+    "mode.observing": "Observeren", "mode.paused": "Gepauzeerd", "mode.default": "Standaard",
+
+    "stat.learned": "Spam geleerd", "stat.autodeleted": "Auto-verwijderd",
+    "stat.inquarantine": "In quarantaine", "stat.knownsenders": "Bekende afzenders",
+
+    "rep.thisweek": "Deze week", "rep.trend": "Spam gevangen · laatste 14 dagen",
+    "rep.rules": "Regels die Spam Buster volgt",
+    "rep.rulesdesc": "Geleerd van e-mail die je ongelezen verwijderde. Verwijdert alleen automatisch bij een consistente, zekere match — of als je het geblokkeerd hebt.",
+    "rep.words": "Woorden die op spam wijzen", "rep.safe": "Afzenders die je vertrouwt",
+    "rep.activity": "Recente activiteit",
+    "dig.removed": "verwijderd", "dig.phishing": "phishing", "dig.spoofed": "vervalst",
+    "dig.trackers": "trackers", "dig.learned": "geleerd", "dig.restored": "hersteld",
+
+    "prot.authenticated": "Geverifieerd", "prot.spoofingblocked": "Vervalsing geblokkeerd",
+    "prot.phishingcaught": "Phishing gevangen", "prot.trackersseen": "Trackers gezien",
+    "prot.newsletters": "Nieuwsbrieven",
+    "prot.phishing": "Phishing gedetecteerd",
+    "prot.phishingdesc": "Links geanalyseerd op nep-domeinen, verborgen bestemmingen en taal die om inloggegevens vraagt. Gevangen in Ongewenst, voordat je klikt.",
+    "prot.spoofing": "Vervalsing geblokkeerd (SPF / DKIM / DMARC)",
+    "prot.spoofingdesc": "Afzenders die de e-mailverificatie niet doorstonden — imitatiepogingen.",
+    "prot.news": "Nieuwsbrieven & massamail", "prot.deleteall": "Alles verwijderen",
+    "prot.newsdesc": "Bulkmail met een werkende afmeldlink. Gebruik één-klik afmelden waar mogelijk, of verwijder ze in één keer. Tip: bij echte spam is verwijderen veiliger dan afmelden (afmelden bevestigt dat je adres actief is).",
+
+    "q.title": "In quarantaine (auto-verwijderd, herstelbaar)", "q.empty": "Quarantaine legen",
+    "q.desc": "Deze zijn naar Verwijderde items verplaatst. Herstellen zet ze terug in je Inbox en leert Spam Buster dat het “geen spam” was. Items ouder dan 30 dagen worden automatisch gewist.",
+    "q.restored": "Hersteld", "q.nothing": "Niets in quarantaine. 🎉", "q.none": "Geen.",
+    "q.undo": "Ongedaan · geen spam",
+
+    "set.accounts": "E-mailaccounts", "set.addph": "naam@hotmail.com", "set.add": "Account toevoegen",
+    "set.detection": "Detectie", "set.mode": "Modus",
+    "set.modedesc": "Observeren leert alleen · Voorstellen toont spam · Auto-verwijderen wist zekere spam.",
+    "set.threshold": "Zekerheidsdrempel", "set.threshdesc": "Verwijder alleen automatisch als Spam Buster minstens zo zeker is.",
+    "set.minev": "Minimaal bewijs", "set.minevunit": "bevestigingen",
+    "set.minevdesc": "Hoe vaak je een afzender/domein moet verwijderen voordat het automatisch verwijderd mag worden.",
+    "set.pollpre": "Controleer Ongewenst elke", "set.pollunit": "seconden",
+    "set.block": "Blokkeerlijst — altijd verwijderd",
+    "set.blockdesc": "Verban een afzender of een heel domein. Alles wat matcht wordt direct verwijderd, in elke modus.",
+    "set.blockdomainph": "domein, bijv. deals-spam.ru", "set.blockdomain": "Domein blokkeren",
+    "set.blocksenderph": "afzender, bijv. promo@spam.com", "set.blocksender": "Afzender blokkeren",
+    "set.friends": "Vrienden — altijd behouden",
+    "set.friendsdesc": "Vertrouwde afzenders of domeinen. Hun e-mail wordt nooit gemarkeerd of verwijderd.",
+    "set.friendph": "vriend@voorbeeld.nl of voorbeeld.nl", "set.addfriend": "Aan Vrienden toevoegen",
+    "set.backup": "Back-up & herstel",
+    "set.backupdesc": "Exporteer alles wat Spam Buster heeft geleerd (regels, blokkeerlijst, vrienden) zodat een nieuwe Mac slim start. Importeren voegt een back-up toe aan deze Mac.",
+    "set.export": "⤓ Brein exporteren", "set.import": "⤒ Brein importeren",
+    "set.language": "Taal", "set.diag": "Diagnostiek", "set.viewlog": "Logboek bekijken",
+    "set.mon.pre": "Bewaakt", "set.mon.folder": "map", "set.mon.folders": "mappen", "set.mon.edit": "wijzig",
+    "set.signout": "Afmelden", "set.connect": "Verbinden", "set.remove": "Verwijderen",
+    "set.folders": "Mappen",
+
+    "st.connected": "verbonden", "st.notconnected": "niet verbonden", "st.injunk": "in Ongewenst",
+    "st.never": "nooit", "ago.s": "{0}s geleden", "ago.m": "{0}m geleden", "ago.h": "{0}u geleden",
+    "status.detail": "{0}/{1} verbonden · laatste scan {2}",
+    "sug.nothing": "Momenteel niets boven de drempel.",
+    "sug.learning": "Aan het leren… verwijder wat spam ongelezen om het te trainen.",
+    "prot.none.phish": "Geen phishing gedetecteerd. 🛡️", "prot.none.spoof": "Geen vervalsing gedetecteerd.",
+    "prot.none.news": "Momenteel geen nieuwsbrieven in Ongewenst.",
+    "model.active": "Slim model actief — gekalibreerd op {0} voorbeelden",
+    "model.warming": "Slim model warmt op — {0}/{1} voorbeelden",
+    "folders.title": "Mappen om te bewaken",
+    "folders.desc": "Kies welke mappen Spam Buster op spam controleert in deze mailbox. Ongewenst is de gebruikelijke keuze.",
+    "com.cancel": "Annuleren", "com.save": "Opslaan",
+    "com.noneyet": "Nog niets.", "set.lastcheck": "Laatste updatecheck: {0}",
+    "act.deleted": "jij verwijderde", "act.autodeleted": "auto-verwijderd", "act.rescued": "gered", "act.notspam": "geen spam",
+    "com.spoofed": "vervalst", "com.autodelete": "auto-verwijderen",
+    "com.unsubscribe": "Afmelden", "com.delete": "Verwijderen",
+
+    "warn.title": "⚠️ Kan {0} mailbox{1} niet scannen",
+    "warn.sub": "{0}. Verbind het account opnieuw om bescherming te hervatten.",
+    "warn.fix": "Herstel in Instellingen →",
+    "warn.expired": "{0} — aanmelding verlopen of verbroken",
+
+    "toast.scanning": "Je Ongewenst-mappen worden gescand…", "toast.saved": "Opgeslagen",
+    "toast.restored": "Hersteld naar Inbox & gemarkeerd als geen spam",
+    "wiz.title": "Welkom bij Spam Buster", "wiz.sub": "Bescherm je inbox in twee snelle stappen.",
+    "wiz.step1": "Voeg je Hotmail / Outlook.com-account(s) toe.",
+    "wiz.step2": "Verbind elk met een korte eenmalige code — geen wachtwoord opgeslagen.",
+    "wiz.note": "Spam Buster start in Observeren-modus en verwijdert niets tot jij het zegt. Alles draait lokaal op deze Mac.",
+    "wiz.later": "Later", "wiz.cta": "Mijn account toevoegen →",
+  },
+};
+
+let LANG = "en";
+function setLang(l) { LANG = (l === "nl") ? "nl" : "en"; }
+function t(key, ...args) {
+  let s = (I18N[LANG] && I18N[LANG][key]) || (I18N.en[key]) || key;
+  args.forEach((a, i) => { s = s.replace("{" + i + "}", a); });
+  return s;
+}
+function applyI18n(root) {
+  (root || document).querySelectorAll("[data-i18n]").forEach(el => {
+    el.textContent = t(el.getAttribute("data-i18n"));
+  });
+  (root || document).querySelectorAll("[data-i18n-ph]").forEach(el => {
+    el.setAttribute("placeholder", t(el.getAttribute("data-i18n-ph")));
+  });
+}

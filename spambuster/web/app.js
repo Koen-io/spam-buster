@@ -9,8 +9,8 @@ async function post(p, b) {
   return api(p, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(b || {})});
 }
 function toast(m) { const t = $("toast"); t.textContent = m; t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 2600); }
-function ago(ts) { if (!ts) return "never"; const s = Math.max(0, Math.floor(Date.now()/1000 - ts));
-  if (s < 60) return s + "s ago"; if (s < 3600) return Math.floor(s/60) + "m ago"; return Math.floor(s/3600) + "h ago"; }
+function ago(ts) { if (!ts) return t("st.never"); const s = Math.max(0, Math.floor(Date.now()/1000 - ts));
+  if (s < 60) return t("ago.s", s); if (s < 3600) return t("ago.m", Math.floor(s/60)); return t("ago.h", Math.floor(s/3600)); }
 function esc(s) { return (s||"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 
 // ---------------- tabs
@@ -26,24 +26,33 @@ function showTab(name) {
 }
 
 // ---------------- state
-async function refresh() { STATE = await api("/api/state"); render(); }
+async function refresh() { STATE = await api("/api/state"); applyLang(); render(); }
+function applyLang() {
+  if (STATE && STATE.language) setLang(STATE.language);
+  applyI18n();
+  document.querySelectorAll("[data-lang]").forEach(c =>
+    c.classList.toggle("active", c.dataset.lang === (STATE ? STATE.language : "en")));
+}
+function modeName(m) { return t(m === "auto" ? "mode.auto" : m === "suggest" ? "mode.suggest" : "mode.observing"); }
 function render() {
   const s = STATE;
   $("version").textContent = s.version;
   const mode = s.detection.mode;
   const paused = s.engine.paused;
-  $("mode-badge").textContent = paused ? "paused" : mode;
+  $("mode-badge").textContent = paused ? t("mode.paused") : modeName(mode);
 
-  $("status-mode").textContent = paused ? "Paused" :
-    (mode === "auto" ? "Auto-delete" : mode === "suggest" ? "Suggest" : "Observing");
+  $("status-mode").textContent = paused ? t("mode.paused") : modeName(mode);
   $("status-dot").className = "dot" + (paused ? " paused" : "");
   const acctInfo = s.engine.accounts || {};
   const connected = s.accounts.filter(a => a.connected).length;
-  let detail = `${connected}/${s.accounts.length} account(s) connected · last scan ${ago(s.engine.last_scan)}`;
+  let detail = t("status.detail", connected, s.accounts.length, ago(s.engine.last_scan));
   if (s.engine.last_error) detail += ` · ⚠ ${esc(s.engine.last_error)}`;
   $("status-detail").innerHTML = detail;
-  document.querySelectorAll(".chip").forEach(c => c.classList.toggle("active", c.dataset.mode === mode));
-  $("pause-btn").textContent = paused ? "Resume" : "Pause";
+  document.querySelectorAll(".chip[data-mode]").forEach(c => {
+    if (c.closest(".acct")) return;  // per-account chips handled separately
+    c.classList.toggle("active", c.dataset.mode === mode);
+  });
+  $("pause-btn").textContent = paused ? t("nav.resume") : t("nav.pause");
 
   // onboarding banner: only when nothing is set up yet
   $("onboard").classList.toggle("hidden", s.accounts.length !== 0);
@@ -52,21 +61,21 @@ function render() {
   const problems = [];
   s.accounts.forEach(a => {
     const info = acctInfo[a.id] || {};
-    if (!a.connected) problems.push(`${a.email} — sign-in expired or disconnected`);
+    if (!a.connected) problems.push(t("warn.expired", a.email));
     else if (info.error) problems.push(`${a.email} — ${info.error}`);
   });
   const wb = $("warn-banner");
   if (s.accounts.length && problems.length) {
-    wb.innerHTML = `<div><div class="wtitle">⚠️ Can’t scan ${problems.length} mailbox${problems.length>1?"es":""}</div>
-        <div class="wsub">${problems.map(esc).join(" · ")}. Reconnect the account to resume protection.</div></div>
-      <button class="btn" onclick="showTab('settings')">Fix in Settings →</button>`;
+    wb.innerHTML = `<div><div class="wtitle">${t("warn.title", problems.length, problems.length>1?"es":"")}</div>
+        <div class="wsub">${t("warn.sub", problems.map(esc).join(" · "))}</div></div>
+      <button class="btn" onclick="showTab('settings')">${t("warn.fix")}</button>`;
     wb.classList.remove("hidden");
   } else { wb.classList.add("hidden"); }
 
   const st = s.stats;
   $("stat-row").innerHTML = [
-    ["Spam learned", st.spam_examples], ["Auto-deleted", st.auto_deleted],
-    ["In quarantine", st.auto_deleted_active], ["Known senders", st.known_senders + st.known_domains],
+    [t("stat.learned"), st.spam_examples], [t("stat.autodeleted"), st.auto_deleted],
+    [t("stat.inquarantine"), st.auto_deleted_active], [t("stat.knownsenders"), st.known_senders + st.known_domains],
   ].map(([l,n]) => `<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
 
   const sug = s.suggestions || [];
@@ -74,22 +83,28 @@ function render() {
     <div class="row"><div class="main"><div>${esc(x.subject || "(no subject)")}</div>
       <div class="sub">${esc(x.sender || "")}</div></div>
       <span class="pill spam">${x.confidence}%</span></div>`).join("")
-    : (st.spam_examples ? `<div class="muted">Nothing above the threshold right now.</div>`
-                        : `<div class="muted">Learning… delete some spam unread to train it.</div>`);
+    : `<div class="muted">${st.spam_examples ? t("sug.nothing") : t("sug.learning")}</div>`;
 
   $("ov-accounts").innerHTML = s.accounts.length ? s.accounts.map(a => `
     <div class="row"><div class="main"><div>${esc(a.email)}</div>
-      <div class="sub">${acctInfo[a.id]?.junk_count ?? "–"} in Junk</div></div>
-      <span class="pill ${a.connected ? "ham":"warn"}">${a.connected ? "connected":"not connected"}</span></div>`).join("")
-    : `<div class="muted">No accounts yet — add them in Settings.</div>`;
+      <div class="sub">${acctInfo[a.id]?.junk_count ?? "–"} ${t("st.injunk")}</div></div>
+      <span class="pill ${a.connected ? "ham":"warn"}">${a.connected ? t("st.connected"):t("st.notconnected")}</span></div>`).join("")
+    : `<div class="muted">—</div>`;
 
-  const lc = s.updates.last_checked ? new Date(s.updates.last_checked).toLocaleString() : "never";
-  if ($("update-line")) $("update-line").textContent = "Last update check: " + lc;
+  const lc = s.updates.last_checked ? new Date(s.updates.last_checked).toLocaleString() : t("st.never");
+  if ($("update-line")) $("update-line").textContent = t("set.lastcheck", lc);
 }
 
 // ---------------- actions
 async function togglePause() { await post("/api/pause", {paused: !STATE.engine.paused}); refresh(); }
-async function scanNow() { await post("/api/scan"); toast("Scanning your Junk folders…"); }
+async function scanNow() { await post("/api/scan"); toast(t("toast.scanning")); }
+async function setLanguage(l) {
+  await post("/api/settings", {language: l});
+  await refresh();
+  const map = {reports: loadReports, protection: loadProtection, quarantine: loadQuarantine};
+  if (CURRENT_TAB === "settings") { fillSettings(); loadLists(); }
+  else if (map[CURRENT_TAB]) map[CURRENT_TAB]();
+}
 async function setMode(mode) { await post("/api/settings", {detection: {...STATE.detection, mode}}); toast("Mode: " + mode); refresh(); }
 
 // ---------------- UPDATE FLOW (animated popups)
@@ -152,6 +167,10 @@ async function applyUpdate() {
 // ---------------- reports
 async function loadReports() {
   const r = await api("/api/reports"); const rules = r.rules;
+  const m = r.model || {};
+  const mline = $("model-line");
+  if (mline) mline.textContent = m.ready
+    ? t("model.active", m.examples) : t("model.warming", m.examples||0, m.min||15);
   $("rep-rules").innerHTML = rules.auto_rules.length ? rules.auto_rules.map(x => `
     <div class="row"><div class="main"><div>${esc(x.text)}</div><div class="sub">${esc(x.evidence)}</div></div>
       <span class="pill spam">auto-delete</span></div>`).join("")
@@ -173,9 +192,9 @@ async function loadDigest() {
   const d = await api("/api/digest");
   const item = (n,l) => `<div class="digest-item"><div class="dn">${n}</div><div class="dl">${l}</div></div>`;
   $("digest").innerHTML = `<div class="digest-grid">
-    ${item(d.spam_removed,"removed")}${item(d.phishing,"phishing")}${item(d.spoofing,"spoofed")}
-    ${item(d.trackers,"trackers")}${item(d.learned,"learned")}${item(d.restored,"restored")}
-  </div><div class="muted small" style="margin-top:8px">Last 7 days${d.restored?` · ${d.restored} correction${d.restored>1?'s':''}`:` · no mistakes`}</div>`;
+    ${item(d.spam_removed,t("dig.removed"))}${item(d.phishing,t("dig.phishing"))}${item(d.spoofing,t("dig.spoofed"))}
+    ${item(d.trackers,t("dig.trackers"))}${item(d.learned,t("dig.learned"))}${item(d.restored,t("dig.restored"))}
+  </div>`;
 }
 async function loadTrends() {
   const t = await api("/api/trends"); const days = t.daily || [];
@@ -199,51 +218,51 @@ function maybeWizard() {
     WIZARD_SHOWN = true;
     openModal(`<div class="upd-center" style="padding-top:0">
         <div style="font-size:44px;margin-bottom:6px">🛡️</div>
-        <div class="upd-title">Welcome to Spam Buster</div>
-        <div class="muted">Guard your inbox in two quick steps.</div>
+        <div class="upd-title">${t("wiz.title")}</div>
+        <div class="muted">${t("wiz.sub")}</div>
       </div>
       <ol class="muted" style="line-height:1.9;margin:18px 4px">
-        <li><b>Add</b> your Hotmail / Outlook.com account(s).</li>
-        <li><b>Connect</b> each with a short one-time code — no password stored.</li>
+        <li>${t("wiz.step1")}</li>
+        <li>${t("wiz.step2")}</li>
       </ol>
-      <p class="muted small">Spam Buster starts in <b>Observe</b> mode and deletes nothing until you say so. Everything runs locally on this Mac.</p>
+      <p class="muted small">${t("wiz.note")}</p>
       <div class="modal-actions">
-        <button class="btn ghost" onclick="closeModal()">Later</button>
-        <button class="btn primary" onclick="closeModal();showTab('settings')">Add my account →</button>
+        <button class="btn ghost" onclick="closeModal()">${t("wiz.later")}</button>
+        <button class="btn primary" onclick="closeModal();showTab('settings')">${t("wiz.cta")}</button>
       </div>`);
   }
 }
-function labelFor(k) { return ({deleted_unread:"you deleted", auto_deleted:"auto-deleted", rescued:"rescued", marked_not_spam:"not spam"})[k] || k; }
+function labelFor(k) { return ({deleted_unread:t("act.deleted"), auto_deleted:t("act.autodeleted"), rescued:t("act.rescued"), marked_not_spam:t("act.notspam")})[k] || k; }
 
 // ---------------- protection
 async function loadProtection() {
   const p = await api("/api/protection"); const s = p.summary;
   $("prot-stats").innerHTML = [
-    ["Authenticated", s.authenticated], ["Spoofing blocked", s.spoofing],
-    ["Phishing caught", s.phishing], ["Trackers seen", s.trackers], ["Newsletters", s.newsletters_current],
+    [t("prot.authenticated"), s.authenticated], [t("prot.spoofingblocked"), s.spoofing],
+    [t("prot.phishingcaught"), s.phishing], [t("prot.trackersseen"), s.trackers], [t("prot.newsletters"), s.newsletters_current],
   ].map(([l,n]) => `<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
 
   $("prot-phishing").innerHTML = p.phishing.length ? p.phishing.map(x => `
     <div class="row"><div class="main"><div>${esc(x.subject || "(no subject)")}
       <span class="pill spam">${x.phishing_score}%</span></div>
       <div class="sub">${esc(x.sender || "")} · ${esc((x.phishing_reasons||[])[0] || "")}</div></div></div>`).join("")
-    : `<div class="muted">No phishing detected. 🛡️</div>`;
+    : `<div class="muted">${t("prot.none.phish")}</div>`;
 
   $("prot-spoofing").innerHTML = p.spoofing.length ? p.spoofing.map(x => `
     <div class="row"><div class="main"><div>${esc(x.subject || "(no subject)")}</div>
       <div class="sub">${esc(x.sender || "")} · spf:${esc(x.spf)} dkim:${esc(x.dkim)} dmarc:${esc(x.dmarc)}</div></div>
-      <span class="pill warn">spoofed</span></div>`).join("")
-    : `<div class="muted">No spoofing detected.</div>`;
+      <span class="pill warn">${t("com.spoofed")}</span></div>`).join("")
+    : `<div class="muted">${t("prot.none.spoof")}</div>`;
 
   $("prot-newsletters").innerHTML = p.newsletters.length ? p.newsletters.map(x => `
     <div class="row"><div class="main"><div>${esc(x.subject || "(no subject)")}</div>
       <div class="sub">${esc(x.sender || "")}${x.trackers ? ` · ${x.trackers} tracker(s)` : ""}</div></div>
       <div>${x.unsub_oneclick
-          ? `<button class="btn tiny" onclick="unsub('${x.account_id}','${x.graph_id}')">Unsubscribe</button>`
+          ? `<button class="btn tiny" onclick="unsub('${x.account_id}','${x.graph_id}')">${t("com.unsubscribe")}</button>`
           : (x.unsub_http && x.unsub_http.length
-             ? `<button class="btn tiny" onclick="unsub('${x.account_id}','${x.graph_id}')">Unsubscribe ↗</button>` : "")}
-        <button class="btn tiny danger" onclick="delNews('${x.account_id}','${x.graph_id}')">Delete</button></div></div>`).join("")
-    : `<div class="muted">No newsletters in your Junk right now.</div>`;
+             ? `<button class="btn tiny" onclick="unsub('${x.account_id}','${x.graph_id}')">${t("com.unsubscribe")} ↗</button>` : "")}
+        <button class="btn tiny danger" onclick="delNews('${x.account_id}','${x.graph_id}')">${t("com.delete")}</button></div></div>`).join("")
+    : `<div class="muted">${t("prot.none.news")}</div>`;
 }
 async function unsub(account_id, graph_id) {
   const r = await post("/api/unsubscribe", {account_id, graph_id});
@@ -267,15 +286,15 @@ async function loadQuarantine() {
     <div class="row"><div class="main">
       <div>${esc(it.subject || "(no subject)")} <span class="conf">${it.confidence ?? ""}%</span></div>
       <div class="sub">${esc(it.sender || "")} · ${(it.reasons||[]).slice(0,1).map(esc).join("")}</div></div>
-    <button class="btn tiny" onclick="restore(${it.id})">Undo · not spam</button></div>`).join("")
-    : `<div class="muted">Nothing quarantined. 🎉</div>`;
+    <button class="btn tiny" onclick="restore(${it.id})">${t("q.undo")}</button></div>`).join("")
+    : `<div class="muted">${t("q.nothing")}</div>`;
   $("q-restored").innerHTML = q.restored.length ? q.restored.map(it =>
     `<div class="row"><div class="main"><div>${esc(it.subject||"")}</div><div class="sub">${esc(it.sender||"")}</div></div>
-      <span class="pill ham">restored</span></div>`).join("") : `<div class="muted">None.</div>`;
+      <span class="pill ham">${t("dig.restored")}</span></div>`).join("") : `<div class="muted">${t("q.none")}</div>`;
 }
 async function restore(id) {
   const r = await post("/api/quarantine/restore", {id});
-  toast(r.ok ? "Restored to Inbox & marked not spam" : ("Failed: " + r.message));
+  toast(r.ok ? t("toast.restored") : ("Failed: " + r.message));
   loadQuarantine(); refresh();
 }
 
@@ -289,22 +308,23 @@ function fillSettings() {
 }
 function renderSettingsAccounts() {
   if (!STATE.accounts.length) { $("set-accounts").innerHTML = `<div class="muted">No accounts yet.</div>`; return; }
-  const modes = ["default","observe","suggest","auto"];
+  const modes = {default:"mode.default", observe:"mode.observe", suggest:"mode.suggest", auto:"mode.auto"};
   $("set-accounts").innerHTML = STATE.accounts.map(a => {
     const cur = a.mode || "default";
-    const chips = modes.map(m => `<button class="chip ${cur===m?'active':''}" onclick="setAcctMode('${a.id}','${m}')">${m==='default'?'Default':m[0].toUpperCase()+m.slice(1)}</button>`).join("");
+    const chips = Object.entries(modes).map(([m,k]) => `<button class="chip ${cur===m?'active':''}" onclick="setAcctMode('${a.id}','${m}')">${t(k)}</button>`).join("");
     const fc = (a.folders||[]).length;
+    const ftxt = `${t("set.mon.pre")} ${fc} ${fc!==1?t("set.mon.folders"):t("set.mon.folder")} — ${t("set.mon.edit")}`;
     return `<div class="acct">
       <div class="row" style="border-bottom:none;padding-bottom:4px">
-        <div class="main"><div>${esc(a.email)}</div><div class="sub">${a.connected?'connected':'not connected'}</div></div>
-        <div>${a.connected?`<button class="btn tiny ghost" onclick="signout('${a.id}')">Sign out</button>`:`<button class="btn tiny primary" onclick="connect('${a.id}')">Connect</button>`}
-          <button class="btn tiny danger" onclick="removeAccount('${a.id}')">Remove</button></div>
+        <div class="main"><div>${esc(a.email)}</div><div class="sub">${a.connected?t("st.connected"):t("st.notconnected")}</div></div>
+        <div>${a.connected?`<button class="btn tiny ghost" onclick="signout('${a.id}')">${t("set.signout")}</button>`:`<button class="btn tiny primary" onclick="connect('${a.id}')">${t("set.connect")}</button>`}
+          <button class="btn tiny danger" onclick="removeAccount('${a.id}')">${t("set.remove")}</button></div>
       </div>
       ${a.connected?`<div class="acct-ctl">
-        <span class="ctl-label">Mode</span><div class="mode-quick">${chips}</div></div>
+        <span class="ctl-label">${t("set.mode")}</span><div class="mode-quick">${chips}</div></div>
       <div class="acct-ctl">
-        <span class="ctl-label">Folders</span>
-        <button class="btn tiny" onclick="openFolders('${a.id}')">Monitoring ${fc} folder${fc!==1?'s':''} — edit</button></div>`:''}
+        <span class="ctl-label">${t("set.folders")}</span>
+        <button class="btn tiny" onclick="openFolders('${a.id}')">${ftxt}</button></div>`:''}
     </div>`;
   }).join("");
 }
@@ -324,11 +344,11 @@ async function openFolders(id) {
       <span>${f.depth?'&nbsp;&nbsp;↳ ':''}${esc(name)}</span>
       <span class="muted small">${f.total||0}</span></label>`;
   }).join("");
-  openModal(`<h2 style="margin-top:0">Folders to monitor</h2>
-    <p class="muted small">Choose which folders Spam Buster watches for spam in this mailbox. Junk is the usual choice.</p>
+  openModal(`<h2 style="margin-top:0">${t("folders.title")}</h2>
+    <p class="muted small">${t("folders.desc")}</p>
     <div class="folder-list">${rows}</div>
-    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn primary" onclick="saveFolders('${id}')">Save</button></div>`);
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">${t("com.cancel")}</button>
+      <button class="btn primary" onclick="saveFolders('${id}')">${t("com.save")}</button></div>`);
 }
 async function saveFolders(id) {
   const boxes = [...document.querySelectorAll('.folder-list input:checked')];
@@ -374,7 +394,7 @@ async function loadLists() {
   $("allow-senders").innerHTML = tags(l.allow_sender, "allow", "allow_sender");
 }
 function tags(items, cls, kind) {
-  if (!items || !items.length) return `<span class="muted small">None yet.</span>`;
+  if (!items || !items.length) return `<span class="muted small">${t("com.noneyet")}</span>`;
   return items.map(it => `<span class="tag ${cls}">${esc(it.value)}
     <button onclick="removeList('${kind}','${esc(it.value)}')" title="Remove">×</button></span>`).join("");
 }

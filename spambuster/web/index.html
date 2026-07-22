@@ -19,7 +19,7 @@
 
 <div class="appbar">
 <header class="topbar">
-  <div class="brand" onclick="showTab('settings')" title="Open Settings" role="button">
+  <div class="brand" onclick="showTab('settings')" title="Settings" role="button">
     <div class="logo"><img src="assets/AppIcon-128.png" alt="Spam Buster"><span class="logo-gear">⚙︎</span></div>
     <div>
       <div class="brand-name">Spam Buster</div>
@@ -27,19 +27,19 @@
     </div>
   </div>
   <div class="top-actions">
-    <button id="pause-btn" class="btn ghost" onclick="togglePause()">Pause</button>
-    <button class="btn ghost" onclick="scanNow()">Scan now</button>
-    <button class="btn" onclick="openUpdateFlow()"><span class="ic">⟳</span> Update</button>
-    <button class="btn ghost" onclick="showTab('settings')" title="Settings">⚙︎ Settings</button>
+    <button id="pause-btn" class="btn ghost" onclick="togglePause()" data-i18n="nav.pause">Pause</button>
+    <button class="btn ghost" onclick="scanNow()" data-i18n="nav.scan">Scan now</button>
+    <button class="btn" onclick="openUpdateFlow()"><span class="ic">⟳</span> <span data-i18n="nav.update">Update</span></button>
+    <button class="btn ghost" onclick="showTab('settings')" title="Settings">⚙︎ <span data-i18n="nav.settings">Settings</span></button>
   </div>
 </header>
 
 <nav class="tabs">
-  <button class="tab active" data-tab="overview" onclick="showTab('overview')">Overview</button>
-  <button class="tab" data-tab="reports" onclick="showTab('reports')">Reports</button>
-  <button class="tab" data-tab="protection" onclick="showTab('protection')">Protection</button>
-  <button class="tab" data-tab="quarantine" onclick="showTab('quarantine')">Quarantine</button>
-  <button class="tab" data-tab="settings" onclick="showTab('settings')">Settings</button>
+  <button class="tab active" data-tab="overview" onclick="showTab('overview')" data-i18n="tab.overview">Overview</button>
+  <button class="tab" data-tab="reports" onclick="showTab('reports')" data-i18n="tab.reports">Reports</button>
+  <button class="tab" data-tab="protection" onclick="showTab('protection')" data-i18n="tab.protection">Protection</button>
+  <button class="tab" data-tab="quarantine" onclick="showTab('quarantine')" data-i18n="tab.quarantine">Quarantine</button>
+  <button class="tab" data-tab="settings" onclick="showTab('settings')" data-i18n="tab.settings">Settings</button>
 </nav>
 </div>
 
@@ -47,10 +47,10 @@
   <div id="warn-banner" class="banner warn-banner hidden"></div>
   <div id="onboard" class="banner hidden">
     <div>
-      <strong>Welcome to Spam Buster.</strong>
-      <div class="muted">Connect your mail accounts in Settings to start guarding your inbox.</div>
+      <strong data-i18n="onboard.title">Welcome to Spam Buster.</strong>
+      <div class="muted" data-i18n="onboard.sub">Connect your mail accounts in Settings to start guarding your inbox.</div>
     </div>
-    <button class="btn primary" onclick="showTab('settings')">Open setup →</button>
+    <button class="btn primary" onclick="showTab('settings')" data-i18n="onboard.cta">Open setup →</button>
   </div>
 
   <!-- OVERVIEW -->
@@ -59,31 +59,28 @@
       <div class="card status-card">
         <div class="status-head">
           <div>
-            <div class="card-label">Protection</div>
+            <div class="card-label" data-i18n="ov.protection">Protection</div>
             <div id="status-mode" class="status-big">…</div>
           </div>
           <div id="status-dot" class="dot"></div>
         </div>
-        <div id="status-detail" class="muted">Starting…</div>
-        <div class="mode-title">Select operation mode</div>
+        <div id="status-detail" class="muted">…</div>
+        <div class="mode-title" data-i18n="ov.selectmode">Select operation mode</div>
         <div class="mode-quick">
-          <button class="chip" data-mode="observe" onclick="setMode('observe')">Observe</button>
-          <button class="chip" data-mode="suggest" onclick="setMode('suggest')">Suggest</button>
-          <button class="chip" data-mode="auto" onclick="setMode('auto')">Auto-delete</button>
+          <button class="chip" data-mode="observe" onclick="setMode('observe')" data-i18n="mode.observe">Observe</button>
+          <button class="chip" data-mode="suggest" onclick="setMode('suggest')" data-i18n="mode.suggest">Suggest</button>
+          <button class="chip" data-mode="auto" onclick="setMode('auto')" data-i18n="mode.auto">Auto-delete</button>
         </div>
       </div>
-
       <div class="card">
-        <div class="card-label">Accounts</div>
+        <div class="card-label" data-i18n="ov.accounts">Accounts</div>
         <div id="ov-accounts"></div>
       </div>
     </div>
-
     <div class="stat-row" id="stat-row"></div>
-
     <div class="card">
-      <div class="card-label">Would auto-delete (top matches)</div>
-      <div id="ov-suggestions" class="muted">Learning…</div>
+      <div class="card-label" data-i18n="ov.woulddelete">Would auto-delete (top matches)</div>
+      <div id="ov-suggestions" class="muted"></div>
     </div>
   </section>
 
@@ -91,31 +88,32 @@
   <section id="tab-reports" class="tab-panel hidden">
     <div class="grid">
       <div class="card">
-        <div class="card-label">This week</div>
+        <div class="card-label" data-i18n="rep.thisweek">This week</div>
         <div id="digest"></div>
       </div>
       <div class="card">
-        <div class="card-label">Spam caught · last 14 days</div>
+        <div class="card-label" data-i18n="rep.trend">Spam caught · last 14 days</div>
         <div id="trends"></div>
       </div>
     </div>
     <div class="card">
-      <div class="card-label">Rules Spam Buster follows</div>
-      <div class="muted small">Learned from mail you deleted unread. It only auto-deletes when a sender or domain is a consistent, confident match — or when you’ve blocklisted it.</div>
-      <div id="rep-rules"></div>
+      <div class="card-label" data-i18n="rep.rules">Rules Spam Buster follows</div>
+      <div class="muted small" data-i18n="rep.rulesdesc">Learned from mail you deleted unread. It only auto-deletes when a sender or domain is a consistent, confident match — or when you’ve blocklisted it.</div>
+      <div id="model-line" class="muted small" style="margin-top:6px;color:var(--accent)"></div>
+      <div id="rep-rules" style="margin-top:8px"></div>
     </div>
     <div class="grid">
       <div class="card">
-        <div class="card-label">Words that signal spam</div>
+        <div class="card-label" data-i18n="rep.words">Words that signal spam</div>
         <div id="rep-words"></div>
       </div>
       <div class="card">
-        <div class="card-label">Senders you trust</div>
+        <div class="card-label" data-i18n="rep.safe">Senders you trust</div>
         <div id="rep-safe"></div>
       </div>
     </div>
     <div class="card">
-      <div class="card-label">Recent activity</div>
+      <div class="card-label" data-i18n="rep.activity">Recent activity</div>
       <div id="rep-events"></div>
     </div>
   </section>
@@ -125,22 +123,22 @@
     <div class="stat-row" id="prot-stats"></div>
     <div class="grid">
       <div class="card">
-        <div class="card-label">Phishing detected</div>
-        <div class="muted small">Links analyzed for look-alike domains, hidden destinations and credential-harvest language. Caught in Junk, before you ever click.</div>
+        <div class="card-label" data-i18n="prot.phishing">Phishing detected</div>
+        <div class="muted small" data-i18n="prot.phishingdesc">Links analyzed for look-alike domains, hidden destinations and credential-harvest language. Caught in Junk, before you ever click.</div>
         <div id="prot-phishing"></div>
       </div>
       <div class="card">
-        <div class="card-label">Spoofing blocked (SPF / DKIM / DMARC)</div>
-        <div class="muted small">Senders that failed email authentication — impersonation attempts.</div>
+        <div class="card-label" data-i18n="prot.spoofing">Spoofing blocked (SPF / DKIM / DMARC)</div>
+        <div class="muted small" data-i18n="prot.spoofingdesc">Senders that failed email authentication — impersonation attempts.</div>
         <div id="prot-spoofing"></div>
       </div>
     </div>
     <div class="card">
       <div class="card-label" style="display:flex;justify-content:space-between;align-items:center">
-        <span>Newsletters & mass email</span>
-        <button class="btn tiny danger" onclick="deleteAllNewsletters()">Delete all</button>
+        <span data-i18n="prot.news">Newsletters & mass email</span>
+        <button class="btn tiny danger" onclick="deleteAllNewsletters()" data-i18n="prot.deleteall">Delete all</button>
       </div>
-      <div class="muted small">Bulk mail with a working unsubscribe. Use one-click unsubscribe where supported, or slice them all at once. <b>Tip:</b> for real spam, deleting is safer than unsubscribing (unsubscribing confirms your address is live).</div>
+      <div class="muted small" data-i18n="prot.newsdesc">Bulk mail with a working unsubscribe. Use one-click unsubscribe where supported, or slice them all at once. Tip: for real spam, deleting is safer than unsubscribing (unsubscribing confirms your address is live).</div>
       <div id="prot-newsletters"></div>
     </div>
   </section>
@@ -149,14 +147,14 @@
   <section id="tab-quarantine" class="tab-panel hidden">
     <div class="card">
       <div class="card-label" style="display:flex;justify-content:space-between;align-items:center">
-        <span>Quarantined (auto-deleted, recoverable)</span>
-        <button class="btn tiny ghost" onclick="emptyQuarantine()">Empty quarantine</button>
+        <span data-i18n="q.title">Quarantined (auto-deleted, recoverable)</span>
+        <button class="btn tiny ghost" onclick="emptyQuarantine()" data-i18n="q.empty">Empty quarantine</button>
       </div>
-      <div class="muted small">These were moved to Deleted Items. Restore puts them back in your Inbox and teaches Spam Buster it was “not spam”. Items older than 30 days clear automatically.</div>
+      <div class="muted small" data-i18n="q.desc">These were moved to Deleted Items. Restore puts them back in your Inbox and teaches Spam Buster it was “not spam”. Items older than 30 days clear automatically.</div>
       <div id="q-active" style="margin-top:14px"></div>
     </div>
     <div class="card">
-      <div class="card-label">Restored</div>
+      <div class="card-label" data-i18n="q.restored">Restored</div>
       <div id="q-restored" class="muted"></div>
     </div>
   </section>
@@ -164,88 +162,97 @@
   <!-- SETTINGS -->
   <section id="tab-settings" class="tab-panel hidden">
     <div class="card">
-      <div class="card-label">Email accounts</div>
+      <div class="card-label" data-i18n="set.accounts">Email accounts</div>
       <div id="set-accounts"></div>
       <div class="field-row">
-        <input id="new-account" class="input" placeholder="name@hotmail.com">
-        <button class="btn" onclick="addAccount()">Add account</button>
+        <input id="new-account" class="input" data-i18n-ph="set.addph" placeholder="name@hotmail.com">
+        <button class="btn" onclick="addAccount()" data-i18n="set.add">Add account</button>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-label">Detection</div>
+      <div class="card-label" data-i18n="set.detection">Detection</div>
       <div class="setting">
-        <label>Mode</label>
+        <label data-i18n="set.mode">Mode</label>
         <div class="mode-quick">
-          <button class="chip" data-mode="observe" onclick="setMode('observe')">Observe</button>
-          <button class="chip" data-mode="suggest" onclick="setMode('suggest')">Suggest</button>
-          <button class="chip" data-mode="auto" onclick="setMode('auto')">Auto-delete</button>
+          <button class="chip" data-mode="observe" onclick="setMode('observe')" data-i18n="mode.observe">Observe</button>
+          <button class="chip" data-mode="suggest" onclick="setMode('suggest')" data-i18n="mode.suggest">Suggest</button>
+          <button class="chip" data-mode="auto" onclick="setMode('auto')" data-i18n="mode.auto">Auto-delete</button>
         </div>
-        <div class="muted small" style="margin-top:8px">Observe learns only · Suggest lists spam · Auto-delete removes high-confidence spam.</div>
+        <div class="muted small" style="margin-top:8px" data-i18n="set.modedesc">Observe learns only · Suggest lists spam · Auto-delete removes high-confidence spam.</div>
       </div>
       <div class="setting">
-        <label>Confidence threshold: <b id="thr-val">95</b>%</label>
+        <label><span data-i18n="set.threshold">Confidence threshold</span>: <b id="thr-val">95</b>%</label>
         <input id="set-threshold" type="range" min="70" max="99" value="95"
                oninput="document.getElementById('thr-val').textContent=this.value" onchange="saveDetection()">
-        <div class="muted small">Auto-delete only when Spam Buster is at least this sure.</div>
+        <div class="muted small" data-i18n="set.threshdesc">Auto-delete only when Spam Buster is at least this sure.</div>
       </div>
       <div class="setting">
-        <label>Minimum evidence: <b id="obs-val">3</b> confirmations</label>
+        <label><span data-i18n="set.minev">Minimum evidence</span>: <b id="obs-val">3</b> <span data-i18n="set.minevunit">confirmations</span></label>
         <input id="set-obs" type="range" min="1" max="10" value="3"
                oninput="document.getElementById('obs-val').textContent=this.value" onchange="saveDetection()">
-        <div class="muted small">How many times you must delete a sender/domain before it can be auto-deleted.</div>
+        <div class="muted small" data-i18n="set.minevdesc">How many times you must delete a sender/domain before it can be auto-deleted.</div>
       </div>
       <div class="setting">
-        <label>Check Junk every <b id="poll-val">120</b> seconds</label>
+        <label><span data-i18n="set.pollpre">Check Junk every</span> <b id="poll-val">120</b> <span data-i18n="set.pollunit">seconds</span></label>
         <input id="set-poll" type="range" min="30" max="600" step="30" value="120"
                oninput="document.getElementById('poll-val').textContent=this.value" onchange="saveDetection()">
       </div>
     </div>
 
     <div class="card">
-      <div class="card-label">Blocklist — always deleted</div>
-      <div class="muted small">Banish a sender or an entire domain. Anything matching is removed immediately, in any mode.</div>
+      <div class="card-label" data-i18n="set.block">Blocklist — always deleted</div>
+      <div class="muted small" data-i18n="set.blockdesc">Banish a sender or an entire domain. Anything matching is removed immediately, in any mode.</div>
       <div id="block-domains" class="taglist"></div>
       <div class="field-row">
-        <input id="new-block-domain" class="input" placeholder="domain, e.g. deals-spam.ru">
-        <button class="btn danger" onclick="addList('block_domain','new-block-domain')">Block domain</button>
+        <input id="new-block-domain" class="input" data-i18n-ph="set.blockdomainph" placeholder="domain">
+        <button class="btn danger" onclick="addList('block_domain','new-block-domain')" data-i18n="set.blockdomain">Block domain</button>
       </div>
       <div id="block-senders" class="taglist"></div>
       <div class="field-row">
-        <input id="new-block-sender" class="input" placeholder="sender, e.g. promo@spam.com">
-        <button class="btn danger" onclick="addList('block_sender','new-block-sender')">Block sender</button>
+        <input id="new-block-sender" class="input" data-i18n-ph="set.blocksenderph" placeholder="sender">
+        <button class="btn danger" onclick="addList('block_sender','new-block-sender')" data-i18n="set.blocksender">Block sender</button>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-label">Friends — always kept</div>
-      <div class="muted small">Trusted senders or domains. Their mail is never flagged or deleted, no matter what.</div>
+      <div class="card-label" data-i18n="set.friends">Friends — always kept</div>
+      <div class="muted small" data-i18n="set.friendsdesc">Trusted senders or domains. Their mail is never flagged or deleted, no matter what.</div>
       <div id="allow-senders" class="taglist"></div>
       <div class="field-row">
-        <input id="new-allow" class="input" placeholder="friend@example.com or example.com">
-        <button class="btn primary" onclick="addList('allow_sender','new-allow')">Add to Friends</button>
+        <input id="new-allow" class="input" data-i18n-ph="set.friendph" placeholder="friend@example.com">
+        <button class="btn primary" onclick="addList('allow_sender','new-allow')" data-i18n="set.addfriend">Add to Friends</button>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-label">Backup & restore</div>
-      <div class="muted small">Export everything Spam Buster has learned (rules, blocklist, friends) so a new Mac starts smart. Import merges a backup into this Mac.</div>
+      <div class="card-label" data-i18n="set.language">Language</div>
+      <div class="mode-quick">
+        <button class="chip" data-lang="en" onclick="setLanguage('en')">English</button>
+        <button class="chip" data-lang="nl" onclick="setLanguage('nl')">Nederlands</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label" data-i18n="set.backup">Backup & restore</div>
+      <div class="muted small" data-i18n="set.backupdesc">Export everything Spam Buster has learned (rules, blocklist, friends) so a new Mac starts smart. Import merges a backup into this Mac.</div>
       <div class="field-row">
-        <button class="btn" onclick="exportBrain()">⤓ Export brain</button>
-        <button class="btn" onclick="document.getElementById('import-file').click()">⤒ Import brain</button>
+        <button class="btn" onclick="exportBrain()" data-i18n="set.export">⤓ Export brain</button>
+        <button class="btn" onclick="document.getElementById('import-file').click()" data-i18n="set.import">⤒ Import brain</button>
         <input id="import-file" type="file" accept="application/json" style="display:none" onchange="importBrain(this)">
       </div>
     </div>
 
     <div class="card">
-      <div class="card-label">Diagnostics</div>
-      <button class="btn ghost" onclick="loadLogs()">View log</button>
+      <div class="card-label" data-i18n="set.diag">Diagnostics</div>
+      <button class="btn ghost" onclick="loadLogs()" data-i18n="set.viewlog">View log</button>
       <span class="muted small" id="update-line" style="margin-left:12px"></span>
       <pre id="logs" class="logs hidden"></pre>
     </div>
   </section>
 </main>
 
+<script src="i18n.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
