@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spam Buster</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="toast" class="toast"></div>
+
+<!-- Connect-account modal -->
+<div id="modal" class="modal-backdrop hidden">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">&times;</button>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">🛡️</div>
+    <div>
+      <div class="brand-name">Spam Buster</div>
+      <div class="brand-sub">v<span id="version">–</span> · <span id="mode-badge" class="badge">…</span></div>
+    </div>
+  </div>
+  <div class="top-actions">
+    <button id="pause-btn" class="btn ghost" onclick="togglePause()">Pause</button>
+    <button class="btn ghost" onclick="scanNow()">Scan now</button>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="tab active" data-tab="overview" onclick="showTab('overview')">Overview</button>
+  <button class="tab" data-tab="reports" onclick="showTab('reports')">Reports</button>
+  <button class="tab" data-tab="quarantine" onclick="showTab('quarantine')">Quarantine</button>
+  <button class="tab" data-tab="settings" onclick="showTab('settings')">Settings</button>
+</nav>
+
+<main>
+  <!-- Onboarding banner -->
+  <div id="onboard" class="banner hidden">
+    <div>
+      <strong>Welcome! Let’s get Spam Buster protecting your inbox.</strong>
+      <div class="muted">Add your Microsoft app ID and connect your two accounts in Settings.</div>
+    </div>
+    <button class="btn primary" onclick="showTab('settings')">Open setup →</button>
+  </div>
+
+  <!-- OVERVIEW -->
+  <section id="tab-overview" class="tab-panel">
+    <div class="grid">
+      <div class="card status-card">
+        <div class="status-head">
+          <div>
+            <div class="card-label">Protection</div>
+            <div id="status-mode" class="status-big">…</div>
+          </div>
+          <div id="status-dot" class="dot"></div>
+        </div>
+        <div id="status-detail" class="muted">Starting…</div>
+        <div class="mode-quick">
+          <button class="chip" data-mode="observe" onclick="setMode('observe')">Observe</button>
+          <button class="chip" data-mode="suggest" onclick="setMode('suggest')">Suggest</button>
+          <button class="chip" data-mode="auto" onclick="setMode('auto')">Auto-delete</button>
+        </div>
+      </div>
+
+      <div class="card update-card">
+        <div class="card-label">Software updates</div>
+        <button id="big-update" class="btn update-big" onclick="checkOrApplyUpdate()">
+          <span class="update-icon">⟳</span>
+          <span id="update-text">Check for updates</span>
+        </button>
+        <div class="muted update-meta">Last checked: <span id="last-checked">never</span></div>
+        <div id="update-result" class="muted"></div>
+      </div>
+    </div>
+
+    <div class="stat-row" id="stat-row"></div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="card-label">Accounts</div>
+        <div id="ov-accounts"></div>
+      </div>
+      <div class="card">
+        <div class="card-label">Would auto-delete (top matches)</div>
+        <div id="ov-suggestions" class="muted">Learning…</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- REPORTS -->
+  <section id="tab-reports" class="tab-panel hidden">
+    <div class="card">
+      <div class="card-label">Rules Spam Buster follows</div>
+      <div class="muted small">Learned from mail you deleted unread. It only auto-deletes when a sender/domain is a consistent, confident match.</div>
+      <div id="rep-rules"></div>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <div class="card-label">Words that signal spam</div>
+        <div id="rep-words"></div>
+      </div>
+      <div class="card">
+        <div class="card-label">Senders you trust</div>
+        <div id="rep-safe"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label">Recent activity</div>
+      <div id="rep-events"></div>
+    </div>
+  </section>
+
+  <!-- QUARANTINE -->
+  <section id="tab-quarantine" class="tab-panel hidden">
+    <div class="card">
+      <div class="card-label">Quarantined (auto-deleted, recoverable)</div>
+      <div class="muted small">These were moved to Deleted Items. Restore puts them back in your Inbox and teaches Spam Buster it was “not spam”.</div>
+      <div id="q-active"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Restored</div>
+      <div id="q-restored" class="muted"></div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="tab-settings" class="tab-panel hidden">
+    <div class="card">
+      <div class="card-label">1 · Microsoft connection</div>
+      <div class="muted small">Paste the Application (client) ID from your free Azure app registration. <a href="#" onclick="showAzureHelp();return false;">How do I get this?</a></div>
+      <div class="field-row">
+        <input id="client-id" class="input" placeholder="00000000-0000-0000-0000-000000000000">
+        <button class="btn primary" onclick="saveClientId()">Save</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">2 · Email accounts</div>
+      <div id="set-accounts"></div>
+      <div class="field-row">
+        <input id="new-account" class="input" placeholder="name@hotmail.com">
+        <button class="btn" onclick="addAccount()">Add account</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">3 · Detection</div>
+      <div class="setting">
+        <label>Mode</label>
+        <select id="set-mode" class="input" onchange="saveDetection()">
+          <option value="observe">Observe — learn only, delete nothing</option>
+          <option value="suggest">Suggest — list spam, don’t delete</option>
+          <option value="auto">Auto-delete high-confidence spam</option>
+        </select>
+      </div>
+      <div class="setting">
+        <label>Confidence threshold: <b id="thr-val">95</b>%</label>
+        <input id="set-threshold" type="range" min="70" max="99" value="95"
+               oninput="document.getElementById('thr-val').textContent=this.value" onchange="saveDetection()">
+        <div class="muted small">Auto-delete only when Spam Buster is at least this sure.</div>
+      </div>
+      <div class="setting">
+        <label>Minimum evidence: <b id="obs-val">3</b> confirmations</label>
+        <input id="set-obs" type="range" min="1" max="10" value="3"
+               oninput="document.getElementById('obs-val').textContent=this.value" onchange="saveDetection()">
+        <div class="muted small">How many times you must delete a sender/domain before it can be auto-deleted.</div>
+      </div>
+      <div class="setting">
+        <label>Check Junk every <b id="poll-val">120</b> seconds</label>
+        <input id="set-poll" type="range" min="30" max="600" step="30" value="120"
+               oninput="document.getElementById('poll-val').textContent=this.value" onchange="saveDetection()">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">4 · Automatic updates</div>
+      <button id="big-update-2" class="btn update-big" onclick="checkOrApplyUpdate()">
+        <span class="update-icon">⟳</span><span id="update-text-2">Check for updates</span>
+      </button>
+      <div class="muted update-meta">Last checked: <span id="last-checked-2">never</span></div>
+      <div class="setting" style="margin-top:14px">
+        <label>Update source (GitHub repo)</label>
+        <input id="set-repo" class="input" placeholder="https://github.com/you/spam-buster.git">
+      </div>
+      <div class="setting">
+        <label>Branch</label>
+        <input id="set-channel" class="input" placeholder="main" style="max-width:200px">
+      </div>
+      <button class="btn" onclick="saveUpdates()">Save update settings</button>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Diagnostics</div>
+      <button class="btn ghost" onclick="loadLogs()">View log</button>
+      <pre id="logs" class="logs hidden"></pre>
+    </div>
+  </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
