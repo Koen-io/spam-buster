@@ -82,20 +82,27 @@ def list_folders(token):
             url = d.get("@odata.nextLink")
         return acc
 
+    # wellKnownName is beta-only; detect the Junk folder by name instead.
+    junk_names = {"junk", "junk email", "junk e-mail", "ongewenste e-mail",
+                  "ongewenste email", "spam", "bulk mail", "bulk email"}
+
+    def wk(name):
+        return "junkemail" if (name or "").strip().lower() in junk_names else None
+
     out = []
     top = _fetch(f"{BASE}/me/mailFolders?$top=100"
-                 f"&$select=id,displayName,wellKnownName,totalItemCount,childFolderCount")
+                 f"&$select=id,displayName,totalItemCount,childFolderCount")
     for f in top:
         out.append({"id": f["id"], "name": f.get("displayName"),
-                    "well_known": f.get("wellKnownName"),
+                    "well_known": wk(f.get("displayName")),
                     "total": f.get("totalItemCount", 0), "depth": 0})
         if f.get("childFolderCount"):
             try:
                 kids = _fetch(f"{BASE}/me/mailFolders/{f['id']}/childFolders"
-                              f"?$top=100&$select=id,displayName,wellKnownName,totalItemCount")
+                              f"?$top=100&$select=id,displayName,totalItemCount")
                 for k in kids:
                     out.append({"id": k["id"], "name": k.get("displayName"),
-                                "well_known": k.get("wellKnownName"),
+                                "well_known": wk(k.get("displayName")),
                                 "total": k.get("totalItemCount", 0), "depth": 1})
             except Exception:
                 pass
