@@ -233,6 +233,31 @@ def mark_not_spam(account_id, message):
         pass
 
 
+def mark_spam(account_id, message):
+    """User explicitly confirmed a message IS spam.
+
+    Mirror of mark_not_spam: a strong spam correction. Heavily trusts the exact
+    sender, mildly the domain and words, and trains the model — so this sender
+    (and similar mail) gets caught earlier and more decisively next time.
+    """
+    f = features(message)
+    if f["sender"]:
+        db.bump_reputation("sender", f["sender"], spam=3.0, ham=0.0)
+    if f["domain"]:
+        db.bump_reputation("domain", f["domain"], spam=1.0, ham=0.0)
+    for tok in set(f["tokens"]):
+        db.bump_reputation("token", tok, spam=0.5, ham=0.0)
+    db.add_event(account_id or "user", kind="marked_spam", label="spam",
+                 source="user", sender=f["sender"], sender_domain=f["domain"],
+                 subject=message.get("subject"))
+    try:
+        from . import model
+        model.train(message, "spam")
+        model.train(message, "spam")   # extra pass — confirmed by the user
+    except Exception:
+        pass
+
+
 def undo_rule(key_type, key):
     """Undo an auto-delete rule: forget everything learned about this key.
 

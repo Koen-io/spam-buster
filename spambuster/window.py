@@ -77,18 +77,17 @@ def main(url=None):
         return
 
     sw, sh = _screen_size()
-    # A comfortable size that fits the whole UI, centred on screen every launch.
+    # Open at the full usable height (top to bottom), centred horizontally, so as
+    # much of the UI as possible is visible the moment the app opens.
     win_w = min(WIDTH, max(1040, sw - 120))
-    win_h = min(sh, 980)
     x = max(0, (sw - win_w) // 2)
-    y = max(0, (sh - win_h) // 2)
 
     splash = webview.create_window(
         APP_NAME, url + "/splash", frameless=True, on_top=True,
         width=760, height=500, x=max(0, (sw - 760) // 2), y=max(0, (sh - 500) // 2),
         background_color="#F4F7FB")
     main_win = webview.create_window(
-        APP_NAME, url, width=win_w, height=win_h, x=x, y=y,
+        APP_NAME, url, width=win_w, height=sh, x=x, y=0,
         min_size=(960, 640), hidden=True, background_color="#EEF1F6")
 
     def _sequence():

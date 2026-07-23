@@ -17,14 +17,23 @@ function escq(s) { return (s||"").replace(/'/g, "’").replace(/[&<>"]/g, c => (
 // ---------------- row action dropdown (keeps rows narrow so the UI always fits)
 function rowMenu(x) {
   const d = `data-sender="${esc(x.sender||'')}" data-domain="${esc(x.sender_domain||'')}" data-subject="${esc(x.subject||'')}" data-account="${esc(x.account_id||'')}"`;
+  const gid = `data-graph-id="${esc(x.graph_id||'')}"`;
   return `<div class="menu">
     <button class="btn tiny ghost menu-btn" onclick="toggleMenu(this,event)">${t("com.actions")} ▾</button>
     <div class="menu-list">
       <button onclick="viewEmail('${escq(x.account_id||'')}','${escq(x.graph_id||'')}','${escq(x.sender||'')}','${escq(x.sender_domain||'')}','${escq(x.subject||'')}')">📄 ${t("com.view")}</button>
       <button ${d} onclick="notSpam(this)">✓ ${t("com.notspam")}</button>
-      <button ${d} onclick="addFriend(this)">＋ ${t("com.friend")}</button>
-      <button class="danger" data-account-id="${esc(x.account_id||'')}" data-graph-id="${esc(x.graph_id||'')}" onclick="flagDelete(this)">🗑 ${t("com.delete")}</button>
+      <button ${d} onclick="addFriend(this)">${t("com.friend")}</button>
+      <button ${d} ${gid} onclick="markSpam(this)">🚫 ${t("com.spam")}</button>
+      <button class="danger" data-account-id="${esc(x.account_id||'')}" ${gid} onclick="flagDelete(this)">🗑 ${t("com.delete")}</button>
     </div></div>`;
+}
+async function markSpam(btn) {
+  await post("/api/spam", {sender: btn.dataset.sender || "", sender_domain: btn.dataset.domain || "",
+    subject: btn.dataset.subject || "", account_id: btn.dataset.account || "", graph_id: btn.dataset.graphId || ""});
+  toast(t("toast.spam"));
+  const row = btn.closest(".row"); if (row) row.style.display = "none";
+  refresh();
 }
 function toggleMenu(btn, ev) {
   if (ev) ev.stopPropagation();
@@ -217,9 +226,11 @@ async function loadReports() {
         <button class="btn tiny ghost" data-type="${esc(x.type||'')}" data-key="${esc(x.key||'')}" onclick="undoRule(this)">${t("rule.undo")}</button>
       </div></div>`).join("")
     : `<div class="muted">No firm rules yet. Keep deleting spam unread and rules will appear here.</div>`;
-  $("rep-words").innerHTML = rules.spammy_words.length ? rules.spammy_words.slice(0,20).map(w =>
+  if ($("rep-words")) $("rep-words").innerHTML = rules.spammy_words.length ? rules.spammy_words.slice(0,20).map(w =>
     `<span class="pill spam" style="margin:3px;display:inline-block">${esc(w.word)} ${Math.round(w.ratio*100)}%</span>`).join("")
     : `<div class="muted">Nothing yet.</div>`;
+  if ($("rules-count")) $("rules-count").textContent = rules.auto_rules.length;
+  if ($("words-count")) $("words-count").textContent = rules.spammy_words.length;
   $("rep-events").innerHTML = r.events.length ? r.events.slice(0,40).map(e => `
     <div class="row"><div class="main"><div>${esc(e.subject || "(no subject)")}</div>
       <div class="sub">${esc(e.sender || "")} · ${ago(e.ts)}</div></div>
@@ -233,7 +244,7 @@ async function loadReports() {
     if (h) {
       const msg = h.type === "enable_auto" ? t("hint.enable", (STATE.stats||{}).spam_examples||0) : t("hint.lower", h.to);
       const btn = h.type === "enable_auto"
-        ? `<button class="btn primary" onclick="setMode('auto')">${t("mode.auto")}</button>`
+        ? `<button class="btn primary" onclick="chooseMode('auto')">${t("mode.auto")}</button>`
         : `<button class="btn primary" onclick="applyThreshold(${h.to})">${t("hint.apply")}</button>`;
       hb.innerHTML = `<button class="hint-x" title="${t('hint.dismiss')}" onclick="dismissHint('${h.type}')">×</button>
         <div>💡 ${esc(msg)}</div>${btn}`;
@@ -257,6 +268,70 @@ async function trustRule(btn) {
   toast(t("toast.friend"));
   const row = btn.closest(".row"); if (row) row.style.display = "none";
   refresh();
+}
+
+// ---- full rules / words popup (scrollable)
+let RULES_ALL = null;
+async function openRulesPopup(tab) {
+  RULES_ALL = await api("/api/rules/all");
+  renderRulesPopup(tab || "rules");
+}
+function renderRulesPopup(tab) {
+  const r = RULES_ALL || {auto_rules: [], spammy_words: []};
+  const rules = r.auto_rules || [], words = r.spammy_words || [];
+  const seg = `<div class="seg">
+    <button class="seg-btn ${tab==='rules'?'active':''}" onclick="renderRulesPopup('rules')">${t("rep.rules")} (${rules.length})</button>
+    <button class="seg-btn ${tab==='words'?'active':''}" onclick="renderRulesPopup('words')">${t("rep.words")} (${words.length})</button>
+  </div>`;
+  let body;
+  if (tab === "words") {
+    body = words.length
+      ? `<div class="wordwrap">${words.map(w => `<span class="pill spam">${esc(w.word)} ${Math.round(w.ratio*100)}%</span>`).join("")}</div>`
+      : `<div class="muted">${t("rules.nowords")}</div>`;
+  } else {
+    body = rules.length ? rules.map(x => `
+      <div class="row"><div class="main"><div>${esc(x.text)}</div><div class="sub">${esc(x.evidence)}</div></div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn tiny ghost" onclick="openRuleEmail('${escq(x.type||'')}','${escq(x.key||'')}')">${t("com.openmail")}</button>
+          <button class="btn tiny" onclick="pTrustRule('${escq(x.type||'')}','${escq(x.key||'')}')">${t("com.friend")}</button>
+          <button class="btn tiny ghost" onclick="pUndoRule('${escq(x.type||'')}','${escq(x.key||'')}')">${t("rule.undo")}</button>
+        </div></div>`).join("")
+      : `<div class="muted">${t("rules.norules")}</div>`;
+  }
+  openModal(`<h2 style="margin-top:0">${t("rep.rules")}</h2>${seg}
+    <div class="rules-scroll">${body}</div>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">${t("com.back")}</button></div>`);
+}
+async function pRefreshRules() { RULES_ALL = await api("/api/rules/all"); renderRulesPopup("rules"); loadReports(); refresh(); }
+async function pUndoRule(type, key) {
+  await post("/api/rule/undo", {type, key}); toast(t("toast.ruleundone")); pRefreshRules();
+}
+async function pTrustRule(type, key) {
+  if (key) await post("/api/lists/add", {kind: "allow_sender", value: key});
+  await post("/api/rule/undo", {type, key}); toast(t("toast.friend")); pRefreshRules();
+}
+
+// ---- mode change with scope choice (keeps all mailboxes in sync)
+function chooseMode(mode) {
+  const accts = (STATE && STATE.accounts) ? STATE.accounts : [];
+  if (accts.length <= 1) { applyModeAll(mode); return; }
+  const rows = accts.map(a =>
+    `<button class="btn ghost mode-scope-item" onclick="setAcctMode('${a.id}','${mode}');closeModal();toast('${esc(a.email)}: ${esc(modeName(mode))}')">
+       ${t("mode.scope.just")} <b>${esc(a.email)}</b></button>`).join("");
+  openModal(`<h2 style="margin-top:0">${t("mode.scope.title", modeName(mode))}</h2>
+    <p class="muted small">${t("mode.scope.desc")}</p>
+    <div class="mode-scope">
+      <button class="btn primary mode-scope-item" onclick="applyModeAll('${mode}');closeModal()">
+        ${t("mode.scope.all")} <span class="muted">— ${t("mode.scope.allsub")}</span></button>
+      ${rows}
+    </div>
+    <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">${t("com.cancel")}</button></div>`);
+}
+async function applyModeAll(mode) {
+  await post("/api/mode/apply_all", {mode});
+  toast(t("mode.scope.applied", modeName(mode)));
+  await refresh();
+  if (CURRENT_TAB === "settings") renderSettingsAccounts();
 }
 
 // ---- review the real email in a neat popup (always opens; has a Back button)

@@ -67,9 +67,9 @@
         <div id="status-detail" class="muted">…</div>
         <div class="mode-title" data-i18n="ov.selectmode">Select operation mode</div>
         <div class="mode-quick">
-          <button class="chip" data-mode="observe" onclick="setMode('observe')" data-i18n="mode.observe">Observe</button>
-          <button class="chip" data-mode="suggest" onclick="setMode('suggest')" data-i18n="mode.suggest">Suggest</button>
-          <button class="chip" data-mode="auto" onclick="setMode('auto')" data-i18n="mode.auto">Auto-delete</button>
+          <button class="chip" data-mode="observe" onclick="chooseMode('observe')" data-i18n="mode.observe">Observe</button>
+          <button class="chip" data-mode="suggest" onclick="chooseMode('suggest')" data-i18n="mode.suggest">Suggest</button>
+          <button class="chip" data-mode="auto" onclick="chooseMode('auto')" data-i18n="mode.auto">Auto-delete</button>
         </div>
       </div>
       <div class="card">
@@ -108,11 +108,11 @@
       <div class="muted small" data-i18n="rep.rulesundo" style="margin-top:4px">Deleted something that wasn’t really spam? Undo the rule to reset that sender or domain to neutral.</div>
       <div id="model-line" class="muted small" style="margin-top:6px;color:var(--accent)"></div>
       <div id="rep-rules" style="margin-top:8px"></div>
-    </div>
-    <div class="card">
-      <div class="card-label" data-i18n="rep.words">Words that signal spam</div>
-      <div class="muted small" data-i18n="rep.wordshint">Learned automatically from mail you delete — nobody types these in. To add your own trigger words, use Settings → Words to watch (a gentle signal, it never deletes on its own).</div>
-      <div id="rep-words" style="margin-top:8px"></div>
+      <div class="btn-row" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="openRulesPopup('rules')"><span data-i18n="rep.allrules">All rules</span> <span id="rules-count" class="count-pill"></span></button>
+        <button class="btn ghost" onclick="openRulesPopup('words')"><span data-i18n="rep.words">Words that signal spam</span> <span id="words-count" class="count-pill"></span></button>
+      </div>
+      <div class="muted small" data-i18n="rep.wordshint" style="margin-top:10px">Words are learned automatically from mail you delete — nobody types these in. To add your own trigger words, use Settings → Words to watch (a gentle signal, it never deletes on its own).</div>
     </div>
     <div class="card">
       <div class="card-label" data-i18n="rep.activity">Recent activity</div>

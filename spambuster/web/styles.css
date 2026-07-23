@@ -276,6 +276,27 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
   font-size: 16px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
 .hint-x:hover { background: rgba(20,40,80,0.16); color: #1f2733; }
 
+/* ---------- count pill on buttons ---------- */
+.count-pill { display: inline-grid; place-items: center; min-width: 20px; height: 20px;
+  padding: 0 6px; border-radius: 10px; background: rgba(47,116,230,0.14); color: var(--accent);
+  font-size: 11.5px; font-weight: 700; margin-left: 4px; }
+.btn.ghost .count-pill { background: rgba(20,40,80,0.08); color: var(--muted); }
+
+/* ---------- rules / words popup ---------- */
+.modal:has(.rules-scroll) { width: min(680px, 95vw); text-align: left; }
+.seg { display: inline-flex; gap: 4px; background: var(--card2); border: 1px solid var(--border-soft);
+  border-radius: 10px; padding: 4px; margin: 4px 0 14px; }
+.seg-btn { border: none; background: none; padding: 7px 14px; border-radius: 7px; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: var(--muted); }
+.seg-btn.active { background: #fff; color: var(--accent); box-shadow: 0 1px 3px rgba(20,40,80,0.1); }
+.rules-scroll { max-height: 58vh; overflow: auto; margin: 2px -4px 0; padding: 0 4px; }
+.wordwrap { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0; }
+.wordwrap .pill { display: inline-block; }
+
+/* ---------- mode scope picker ---------- */
+.mode-scope { display: flex; flex-direction: column; gap: 9px; margin: 6px 0 2px; }
+.mode-scope-item { justify-content: flex-start; text-align: left; padding: 13px 15px; font-size: 13.5px; }
+
 /* ---------- email review popup ---------- */
 .modal:has(.mail-frame) { width: min(760px, 95vw); text-align: left; }
 .mail-head { border-bottom: 1px solid var(--border-soft); padding: 2px 0 12px; margin-bottom: 12px; }

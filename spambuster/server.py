@@ -514,6 +514,49 @@ def create_app():
         engine.wake()
         return jsonify({"ok": True, "added": sender})
 
+    @app.route("/api/spam", methods=["POST"])
+    def api_spam():
+        """User manually confirms a message is spam: learn hard, then remove it."""
+        d = request.get_json(force=True) or {}
+        sender = (d.get("sender") or "").strip().lower()
+        domain = (d.get("sender_domain")
+                  or (sender.split("@", 1)[1] if "@" in sender else "")).strip().lower()
+        detector.mark_spam(d.get("account_id"),
+                           {"sender": sender, "sender_domain": domain,
+                            "sender_name": d.get("sender_name", ""),
+                            "subject": d.get("subject", "")})
+        deleted = False
+        gid = d.get("graph_id")
+        if gid and d.get("account_id"):
+            try:
+                ok, _ = engine.delete_message(d.get("account_id"), gid,
+                                              reason="Confirmed spam")
+                deleted = bool(ok)
+            except Exception:
+                deleted = False
+        engine.wake()
+        return jsonify({"ok": True, "deleted": deleted})
+
+    @app.route("/api/rules/all")
+    def api_rules_all():
+        cfg = config.load()
+        min_obs = cfg["detection"].get("min_observations", 3)
+        return jsonify(detector.rules_summary(min_observations=min_obs, limit=1000))
+
+    @app.route("/api/mode/apply_all", methods=["POST"])
+    def api_mode_apply_all():
+        """Set the global mode AND make every mailbox follow it (clear overrides)."""
+        d = request.get_json(force=True) or {}
+        mode = d.get("mode")
+        if mode not in ("observe", "suggest", "auto"):
+            return jsonify({"ok": False, "error": "bad mode"}), 400
+        cfg = config.load()
+        cfg["detection"]["mode"] = mode
+        for a in cfg["accounts"]:
+            a.pop("mode", None)   # follow the global default
+        config.save(cfg); engine.wake()
+        return jsonify({"ok": True, "mode": mode})
+
     @app.route("/api/notspam", methods=["POST"])
     def api_notspam():
         d = request.get_json(force=True) or {}
