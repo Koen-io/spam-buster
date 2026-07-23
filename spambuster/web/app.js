@@ -434,6 +434,28 @@ async function loadFlagged() {
       <div class="sub" style="white-space:normal;max-width:none">${esc(x.sender || "")}${x.account?` · ${esc(x.account)}`:""}${(x.reasons||[]).length?` · ${esc((x.reasons||[])[0])}`:""}</div></div>
     ${rowMenu(x)}</div>`).join("")
     : `<div class="muted">${t("rep.flaggednone")}</div>`;
+  const bulk = $("flagged-bulk");
+  if (bulk) bulk.style.display = (r.items && r.items.length) ? "" : "none";
+  FLAGGED_COUNT = (r.items || []).length;
+}
+let FLAGGED_COUNT = 0;
+function bulkFlagged(action) {
+  document.querySelectorAll(".menu.open").forEach(x => x.classList.remove("open"));
+  if (!FLAGGED_COUNT) { toast(t("rep.bulknone")); return; }
+  const labels = {spam: t("rep.bulkspam"), delete: t("rep.bulkdelete"), notspam: t("rep.bulknotspam")};
+  openModal(`<h2 style="margin-top:0">${esc(labels[action])}</h2>
+    <p class="muted">${t("rep.bulkconfirm", FLAGGED_COUNT)}</p>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="closeModal()">${t("com.cancel")}</button>
+      <button class="btn ${action==='notspam'?'primary':'danger'}" onclick="doBulkFlagged('${action}')">${t("com.confirm")}</button>
+    </div>`);
+}
+async function doBulkFlagged(action) {
+  closeModal();
+  toast(t("rep.bulkworking"));
+  const r = await post("/api/flagged/bulk", {action});
+  toast(t("rep.bulkdone", r.processed || 0));
+  loadReports(); refresh();
 }
 async function addFriend(btn) {
   await post("/api/friend/add", {sender: btn.dataset.sender || "", sender_domain: btn.dataset.domain || "",

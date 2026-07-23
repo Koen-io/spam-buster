@@ -493,6 +493,44 @@ def create_app():
         items.sort(key=lambda x: x.get("confidence", 0), reverse=True)
         return jsonify({"items": items[:150], "count": len(items)})
 
+    @app.route("/api/flagged/bulk", methods=["POST"])
+    def api_flagged_bulk():
+        """Apply one action to every flagged email at once (mark spam / delete / not-spam)."""
+        d = request.get_json(force=True) or {}
+        action = d.get("action")
+        floor = int(d.get("min", 50))
+        if action not in ("spam", "delete", "notspam"):
+            return jsonify({"ok": False, "error": "bad action"}), 400
+        cfg = config.load()
+        processed = 0
+        for a in cfg.get("accounts", []):
+            aid = a["id"]
+            items = db.get_meta(f"flagged:{aid}", []) or []
+            keep = []
+            for f in items:
+                if f.get("confidence", 0) < floor:
+                    keep.append(f)
+                    continue
+                msg = {"sender": f.get("sender", ""), "sender_domain": f.get("sender_domain", ""),
+                       "sender_name": "", "subject": f.get("subject", "")}
+                gid = f.get("graph_id")
+                try:
+                    if action == "spam":
+                        detector.mark_spam(aid, msg)
+                        if gid:
+                            engine.delete_message(aid, gid, reason="Confirmed spam (bulk)")
+                    elif action == "delete":
+                        if gid:
+                            engine.delete_message(aid, gid, reason="Deleted from Flagged (bulk)")
+                    elif action == "notspam":
+                        detector.mark_not_spam(aid, msg)
+                    processed += 1
+                except Exception:
+                    keep.append(f)   # leave it in the list if the action failed
+            db.set_meta(f"flagged:{aid}", keep)
+        engine.wake()
+        return jsonify({"ok": True, "processed": processed})
+
     @app.route("/api/message/delete", methods=["POST"])
     def api_message_delete():
         d = request.get_json(force=True) or {}

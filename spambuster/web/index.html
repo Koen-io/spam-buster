@@ -98,7 +98,17 @@
   <section id="tab-reports" class="tab-panel hidden">
     <div id="reports-hint" class="banner hidden" style="margin-bottom:16px"></div>
     <div class="card">
-      <div class="card-label" data-i18n="rep.flagged">Flagged emails — review</div>
+      <div class="card-label" style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <span data-i18n="rep.flagged">Flagged emails — review</span>
+        <div class="menu" id="flagged-bulk" style="display:none">
+          <button class="btn tiny menu-btn" onclick="toggleMenu(this,event)"><span data-i18n="rep.bulkactions">Actions for all</span> ▾</button>
+          <div class="menu-list">
+            <button onclick="bulkFlagged('spam')">🚫 <span data-i18n="rep.bulkspam">Mark all as spam</span></button>
+            <button onclick="bulkFlagged('notspam')">✓ <span data-i18n="rep.bulknotspam">Mark all as No Spam</span></button>
+            <button class="danger" onclick="bulkFlagged('delete')">🗑 <span data-i18n="rep.bulkdelete">Delete all</span></button>
+          </div>
+        </div>
+      </div>
       <div class="muted small" data-i18n="rep.flaggeddesc">Everything currently in your Junk, rated by Spam Buster. Mark false positives “No Spam”, or delete confirmed spam.</div>
       <div id="flagged-list" style="margin-top:12px"></div>
     </div>
