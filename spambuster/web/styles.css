@@ -290,6 +290,10 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
   font-size: 13px; font-weight: 600; color: var(--muted); }
 .seg-btn.active { background: #fff; color: var(--accent); box-shadow: 0 1px 3px rgba(20,40,80,0.1); }
 .rules-scroll { max-height: 58vh; overflow: auto; margin: 2px -4px 0; padding: 0 4px; }
+/* keep a long rule/sender from running over the action buttons — cut it off with … */
+.rules-scroll .row .main { overflow: hidden; }
+.rules-scroll .row .main > div { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rules-scroll .row > div:last-child { flex-shrink: 0; }
 .wordwrap { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0; }
 .wordwrap .pill { display: inline-block; }
 
