@@ -35,14 +35,51 @@ async function markSpam(btn) {
   const row = btn.closest(".row"); if (row) row.style.display = "none";
   refresh();
 }
+function closeMenus() {
+  document.querySelectorAll(".menu.open").forEach(x => {
+    x.classList.remove("open");
+    const l = x.querySelector(".menu-list");
+    if (l) { l.style.position = ""; l.style.top = ""; l.style.left = ""; l.style.right = ""; }
+  });
+}
 function toggleMenu(btn, ev) {
   if (ev) ev.stopPropagation();
   const m = btn.closest(".menu");
   const wasOpen = m.classList.contains("open");
-  document.querySelectorAll(".menu.open").forEach(x => x.classList.remove("open"));
-  if (!wasOpen) m.classList.add("open");
+  closeMenus();
+  if (wasOpen) return;
+  m.classList.add("open");
+  // Fixed positioning so the menu is never clipped by a scrollable container.
+  const list = m.querySelector(".menu-list");
+  if (!list) return;
+  const r = btn.getBoundingClientRect();
+  list.style.position = "fixed";
+  list.style.right = "auto";
+  const w = list.offsetWidth || 180;
+  list.style.left = Math.max(8, r.right - w) + "px";
+  const h = list.offsetHeight || 0;
+  let top = r.bottom + 5;
+  if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - 5 - h);
+  list.style.top = top + "px";
 }
-document.addEventListener("click", () => document.querySelectorAll(".menu.open").forEach(x => x.classList.remove("open")));
+document.addEventListener("click", closeMenus);
+window.addEventListener("scroll", closeMenus, true);
+
+// dropdown for a learned rule (Open email / Friends / Undo). popup=true wires the
+// popup-aware handlers so the list re-renders in place.
+function ruleMenu(x, popup) {
+  const tq = escq(x.type || ""), kq = escq(x.key || "");
+  const ds = `data-type="${esc(x.type||'')}" data-key="${esc(x.key||'')}"`;
+  const trust = popup ? `onclick="pTrustRule('${tq}','${kq}')"` : `${ds} onclick="trustRule(this)"`;
+  const undo  = popup ? `onclick="pUndoRule('${tq}','${kq}')"`  : `${ds} onclick="undoRule(this)"`;
+  return `<div class="menu">
+    <button class="btn tiny ghost menu-btn" onclick="toggleMenu(this,event)">${t("com.actions")} ▾</button>
+    <div class="menu-list">
+      <button onclick="openRuleEmail('${tq}','${kq}')">📄 ${t("com.openmail")}</button>
+      <button ${trust}>${t("com.friend")}</button>
+      <button ${undo}>↺ ${t("rule.undo")}</button>
+    </div></div>`;
+}
 
 // ---------------- tabs
 function showTab(name) {
@@ -221,9 +258,7 @@ async function loadReports() {
     <div class="row"><div class="main"><div>${esc(x.text)}</div><div class="sub">${esc(x.evidence)}</div></div>
       <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
         <span class="pill spam">auto-delete</span>
-        <button class="btn tiny ghost" onclick="openRuleEmail('${esc(x.type||'')}','${esc(x.key||'')}')">${t("com.openmail")}</button>
-        <button class="btn tiny" data-type="${esc(x.type||'')}" data-key="${esc(x.key||'')}" onclick="trustRule(this)" title="${t('rule.trusttip')}">${t("com.friend")}</button>
-        <button class="btn tiny ghost" data-type="${esc(x.type||'')}" data-key="${esc(x.key||'')}" onclick="undoRule(this)">${t("rule.undo")}</button>
+        ${ruleMenu(x, false)}
       </div></div>`).join("")
     : `<div class="muted">No firm rules yet. Keep deleting spam unread and rules will appear here.</div>`;
   if ($("rep-words")) $("rep-words").innerHTML = rules.spammy_words.length ? rules.spammy_words.slice(0,20).map(w =>
@@ -291,11 +326,7 @@ function renderRulesPopup(tab) {
   } else {
     body = rules.length ? rules.map(x => `
       <div class="row"><div class="main"><div>${esc(x.text)}</div><div class="sub">${esc(x.evidence)}</div></div>
-        <div style="display:flex;gap:6px;flex-shrink:0">
-          <button class="btn tiny ghost" onclick="openRuleEmail('${escq(x.type||'')}','${escq(x.key||'')}')">${t("com.openmail")}</button>
-          <button class="btn tiny" onclick="pTrustRule('${escq(x.type||'')}','${escq(x.key||'')}')">${t("com.friend")}</button>
-          <button class="btn tiny ghost" onclick="pUndoRule('${escq(x.type||'')}','${escq(x.key||'')}')">${t("rule.undo")}</button>
-        </div></div>`).join("")
+        ${ruleMenu(x, true)}</div>`).join("")
       : `<div class="muted">${t("rules.norules")}</div>`;
   }
   openModal(`<h2 style="margin-top:0">${t("rep.rules")}</h2>${seg}

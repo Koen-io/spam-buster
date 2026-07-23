@@ -118,9 +118,14 @@
       <div class="muted small" data-i18n="rep.rulesundo" style="margin-top:4px">Deleted something that wasn’t really spam? Undo the rule to reset that sender or domain to neutral.</div>
       <div id="model-line" class="muted small" style="margin-top:6px;color:var(--accent)"></div>
       <div id="rep-rules" style="margin-top:8px"></div>
-      <div class="btn-row" style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn" onclick="openRulesPopup('rules')"><span data-i18n="rep.allrules">All rules</span> <span id="rules-count" class="count-pill"></span></button>
-        <button class="btn ghost" onclick="openRulesPopup('words')"><span data-i18n="rep.words">Words that signal spam</span> <span id="words-count" class="count-pill"></span></button>
+      <div class="btn-row" style="margin-top:14px">
+        <div class="menu">
+          <button class="btn menu-btn" onclick="toggleMenu(this,event)"><span data-i18n="rep.viewlists">View full lists</span> ▾</button>
+          <div class="menu-list">
+            <button onclick="openRulesPopup('rules')"><span data-i18n="rep.allrules">All rules</span> <span id="rules-count" class="count-pill"></span></button>
+            <button onclick="openRulesPopup('words')"><span data-i18n="rep.words">Words that signal spam</span> <span id="words-count" class="count-pill"></span></button>
+          </div>
+        </div>
       </div>
       <div class="muted small" data-i18n="rep.wordshint" style="margin-top:10px">Words are learned automatically from mail you delete — nobody types these in. To add your own trigger words, use Settings → Words to watch (a gentle signal, it never deletes on its own).</div>
     </div>
